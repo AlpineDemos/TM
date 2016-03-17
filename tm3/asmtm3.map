@@ -1,0 +1,19 @@
+
+ Start  Stop   Length Name               Class
+
+ 00000H 00E7FH 00E80H CODE16             
+ 00E80H 01C93H 00E14H CODE32             
+ 01CA0H 0389FH 01C00H CODEEND            STACK
+
+Error: Undefined symbol SBDETECT in module ASMTM3.ASM
+Error: Undefined symbol SBWRITEINFO in module ASMTM3.ASM
+Error: Undefined symbol IRQ in module ASMTM3.ASM
+Error: Undefined symbol LOADTM3 in module ASMTM3.ASM
+Error: Undefined symbol STEREO in module ASMTM3.ASM
+Error: Undefined symbol LOOPIT in module ASMTM3.ASM
+Error: Undefined symbol SAMPLINGRATE in module ASMTM3.ASM
+Error: Undefined symbol PLAYTM3 in module ASMTM3.ASM
+Error: Undefined symbol TM3SYNCCOUNT in module ASMTM3.ASM
+Error: Undefined symbol STOPTM3 in module ASMTM3.ASM
+Program entry point at 0000:03DB
+

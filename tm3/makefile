@@ -1,0 +1,15 @@
+!if $d(DEBUG)
+ASMDEBUG=/zi
+LINKDEBUG=/v
+!else
+ASMDEBUG=
+LINKDEBUG=
+!endif
+
+.asm.obj:
+    tasm /m $(ASMDEBUG) $<
+
+ASMTM3.EXE: ASMTM3.OBJ TM3.OBJ
+     tlink /3 /x $(LINKDEBUG) C:\'ALPINE\PMODE\PMODE + ASMTM3 + TM3, ASMTM3
+
+ASMTM3.OBJ:   ASMTM3.ASM
