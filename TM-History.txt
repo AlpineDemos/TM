@@ -1,0 +1,1877 @@
+░▒▓▓ TMI  ▓▓▒░─────────────────────────────────────────────────────────────── 001 - 02.10.96
+
+  Zuerst einmal zu FT2: Wenn du ein MIDI-Keyboard hast, kannst du es in
+  FT2 verwenden. Das würde das Eingeben von Songs erheblich erleichtern.
+  Leider habe ich keines zu Verfügung.
+ ( BTW:  Wenn ich nur diese verdammte Musik in 2nd Reality starten könnte,
+   aber jedesmal, wenn ich mit EMS-Manager boote, stürzt der Rechner noch
+   vor dem Config-Menü ab. Das selbe passiert übrigens auch bei ST3...)
+
+1.Folgende Neuerungen sind in THE MODULE I gemacht worden:
+- Mixing-Proc ist komplett neu geschrieben worden. Innerhalb der
+  Hauptschleife wird außer beim Speichern des Sample-Misch-Bytes nicht
+  mehr auf den Speicher zugegriffen. Dafür muß es aber einen zweiten
+  Mischpuffer verwalten und den gesamten neu abspeichern. Trotzdem
+  ist der Geschwindigkeitszuwachs beträchtlich.
+
+- Das Finetuning kann man umgehen, indem man nicht das original
+  Mod-File abspielt sondern eine Copy ( *.MD ), die die Finetune-Werte
+  schon in der Notenhöhe abgespeichert hat. Damit spart man sich
+  eine Berechnung --- Period*8363/Finetunetabelle[Finetunewert] ---
+  Eine zweite Alternative wäre eine Benutzung von Tabellen, bei denen
+  man aber erst den Index berechnen muß (s. FT2). Drittens könnte man die
+  Berechnung im Programm ausführt (s. ST3). Die schnellste Form wäre meine
+  Vorberechnung. Bei einem Demo spielt das Original sowieso keine Rolle.
+  Die zweitschnellste ist die Formel von Future Crew. Man muß dabei nur
+  beim Patterneintrag die Period neu berechnen. Die langsamste Möglichkeit
+  ist die von Triton und hat nur bei *.XM - Modulen einen Sinn.
+  Vorläufig wird die ST3-Version implementiert. Wenn die Zeit im Demo
+  wirklich knapp werden sollte, kann man das Modul immer noch vorberechnen
+  und den Finetune-Code ausklammern.
+
+- Neue Effekte sind eingebaut worden:
+  - Portamento/Tone Portamento
+  - Sample Offset
+  - Retrigger Note
+  ( For a complete List of supported effects refer to Readme.txt )
+  Die MOD-Files im Archiv enthalten Patterns, in denen z.B. vom Tone
+  Portamento gehörig Gebrauch gemacht wird ( Grell ist von DAS GRELLE von
+  Golumn, Pinb* ist aus dem Spiel Pinball Fantasies.)
+
+- Die Tick-Effects werden über einen indizierten JMP aufgerufen
+  ( JMP cs:DInstJump[bx] ) und springen alle am Ende an das Ende der
+  Hauptschleife. Dies erspart eine Menge Vergleiche. ( Umständlich ist
+  es nur bei den Doppeleffects wie Tone-Portamento+Volume Slide.
+  Hier braucht man 4 Procs:
+       * Tone Portamento Up + Volume Slide Up
+       * Tone Portamento Up + Volume Slide Dn
+       * Tone Portamento Dn + Volume Slide Up
+       * Tone Portamento Dn + Volume Slide Dn
+  Alle Effects sind wegen dieser getrennten Up/Dn - Behandlung schneller
+  geworden.
+
+- Ich habe mit Vibrato angefangen, bin aber noch nicht ganz fertig...
+
+░▒▓▓ 2. MODs  ▓▓▒░─────────────────────────────────────────────────────────── 07.10.96
+
+Wichtig: Hast du eine Beschreibung des Effects Vibrato? So wie in PCUnderg.
+         beschrieben hört man ihn fast nicht. Ich habe jetzt eine eigene
+         Version zusammengebastelt, aber vielleicht hört sich manches
+         MOD schlecht an. Könntest du 'mal im FIDO-Net nachschauen?
+
+Ich habe mir die MODs auf meinem Player angehört. Beide haben Gründe dafür,
+daß sie nicht ordnungsgemäß abgespielt wurden. Zuerst zu Chip4U:
+ 1. Es beinhaltet den Doppeleffect Tone Portamento+Volume Slide, der in
+    V1.1 noch nicht eingebaut war ( Deswegen klang das Mod am Ende so schief
+    und hing in das ganze 1.Pattern rein ( Channel wird ja mit Doppeleffect
+    auf 0 gefadet.) )
+    BTW: Der Doppeleffect ist in der aktuellen Version 1.2 schon eingebaut.
+ 2. Wenn du mein Programm laufen läßt, siehst du in Channel 4 durch ganze
+    Pattern das Zeichen < ­ >. Es bedeutet Arpeggio.
+
+    Zuerst einmal zur allgemeinen Tongenerierung bei Samples.
+    ( Wenn es dich nicht interessiert, laß' diesen Abschnitt einfach aus )
+
+    Um einen bestimmten Ton zu spielen, muß ich das Sample unterschiedlich
+    schnell abspielen, also entweder Bytes des Samples doppelt spielen
+    (tiefer) oder auslassen (höher). Die auszulassenden Bytes sind natürlich
+    keine ganzen Zahlen, und noch dazu klein, also z.B. 0.055 o.ä.
+    In den einzelnen Pattern stehen natürlich keine Komma-Zahlen sondern
+    Periods. Wenn man die Standard-Period für C-4 durch die im Pattern
+    gespeicherte Period teilt, erhält man eine sehr kleine Zahl mit
+    Nachkommastellen. Diese Nachkommastellen kommen in das Low-Word, die
+    ganze Zahl in das High-Word eines 32-Bit-Inc-Factors ( also der Variable,
+    um die die Position in einem Sample nach jedem gemixten Byte erhöht wird).
+    Die Period für C-4 gilt für eine Frequenz von 8363 Hz, die du vom Amiga
+    kennen müßtest. Bei anderen Mix-Rates muß die Period für den Ton C-4
+    verändert werden. Man nimmt also z.B. die von A-3 (höhere MIX-Rates) oder
+    D-4 (kleinere MIX-Rates).
+    Im Pattern sind nun die Periods der einzelnen Töne abgespeichert.
+    Man kann die C-4-Periode also direkt durch diese gespeicherten Periods
+    teilen und so den Inc-Factor bestimmen. Beim Arpeggio sind die Parameter
+    aber nicht mehr Periods, sondern Halbtöne. Man braucht also dafür eine
+    Tabelle. Wenn man zur Laufzeit den Index einer im Pattern abgespeicherten
+    Period bestimmen müßte, um dann zum Index die Halbtöne vom Arpeggio-
+    Parameter dazuzuaddieren, würde das viel zu lange dauern. Deswegen habe
+    ich das Arpeggio so gelöst, daß ich vor dem Abspielen die Pattern noch
+    einmal verändere. Eine Pattern-Zeile hat vier Kanäle ( Tracks ) mit
+    je vier Datenbytes, die folgendermaßen belegt sind.
+
+    Instrument,Bits 4-7 -> ■■■■ ■■■■ <- Note, Bits 8-11
+                           ■■■■■■■■  <- Note, Bits 0-7
+    Instrument,Bits 0-3 -> ■■■■ ■■■■ <- Effect-Nr.
+                           ■■■■■■■■  <- Effectbyte
+
+    Die Precalculations habe ich so gemacht:
+    Ich speichere in den Variablen LastInst0 - LastInst3 den Index von der
+    momentan gespielten Period im Array ModOctave. Wenn nun ein Arpeggio in
+    einer Patternzeile eines Kanals auftaucht ( Effect=0, EffectByte > 0 ),
+    gibt es 2 Möglichkeiten:
+     1. Es steht in der selben Zeile keine neue Period. In diesem Fall
+        wird der Index auf die zuletzt gespielte Period in Byte 2 eingetragen
+        ( siehe oben ), die Bits 8-11 der Period in Byte 1 werden auf 0
+        gesetzt. Da die Period-Tabelle lauter Word-Einträge hat, ist der
+        Index schon so abgespeichert, daß man mit diesem sofort die richtige
+        Period aus der Tabelle lesen kann ( SHL AX,1 )
+     2. Wenn gleichzeitig zum Arpeggio eine neue Note angeschlagen wird,
+        werden eingfach die Bits 8-11 in Byte 1 auf 1111b gesetzt, man kann
+        so zur Laufzeit einfach feststellen, ob eine neue Period gespielt
+        werden muß oder nicht.
+    Als letzte Vereinfachung trage ich bei den Arpeggio-Effects statt dem
+    Effect 0 den ( unbenützten ) Effect 8 ein, das spart mir eine Überprüfung,
+    ob der Effect 0 und das EffectByte > 0 ist.
+
+Nun zu Witnes.mod:  Auch hier gibt es einen Grund, warum
+es nicht korrekt abgespielt wird: Das Mod verändert seine BPM-Rate. Die
+BPM-Rate wirkt sich direkt auf den TIMER-Interrupt aus. Das heißt, wenn die
+BPM-Rate verändert wird, müßte ich auch den TIMER, der jetzt fest auf 50 Hz
+läuft, mitverändern. Ich möchte aber keinen MOD-Player machen, der alle
+Effects perfekt beherrscht, sondern einen, der möglichst wenig Zeit
+verbraucht ( Abgesehen davon, daß eine Synchronisierung mit dem Retrace damit
+nicht mehr möglich wäre ).
+BTW: Es gibt eine Möglichkeit, den Player auf 70Hz einzustellen. Aber das MOD,
+das abgespielt wird, muß auch mit 70Hz composed worden sein. Der Nachteil ist,
+daß ich dann alle anderen MODs mit 50Hz nicht mehr ordnungsgemäß abspielen
+kann. Das stört aber bei einem Demo sowieso nicht.
+Ok, nun zur Music. Früher oder später müssen wir uns einen guten (!) Musician
+suchen. Bis dahin werde ich die Tunes übernehmen. Aber ich möchte mich
+trotzdem mehr auf das Coden konzentrieren. Die Tunes werden erst composed,
+wenn das ganze Demo schon steht ( damit es auch zum Demo paßt )
+
+BTW: Hast du eigentlich CUBIC Player? Es ist der beste Player,
+     den es gibt ( noch besser als INERTIA ). Da siehst du auch die
+     Effects, die gerade abgespielt werden. So kannst du überprüfen,
+     ob das MOD nur deswegen schlecht läuft, weil der Effect noch nicht
+     implementiert ist. Im übrigen kann es nicht nur MODs, sondern auch
+     .XM, .STM, .ST3, .669 etc. abspielen.
+     Soll ich es dir schicken?
+
+░▒▓▓ 3. The Module I ▓▓▒░──────────────────────────────────────────────────── 003 - 11.10.96
+
+ Danke für den Tip!!! Ich habe bis jetze immer angenommen, daß nur die unteren
+ 4 Bits des Page-Registers benützt werden, weil ich immer nur die XT-Docs
+ gelesen habe. Aber bei dem AT-Register werden alle 8 Bits benützt
+ ( 24-Bit-Linear-Address ). Jetzt steht einer reinen Assembler-Implementation
+ nichts mehr im Weg. ( Allerdings ist das nicht so einfach, die Ladeproc wird
+ ziemlich lang, und die Init-Procs sind auch recht groß )
+ Übrigens, Sorry about the lame Volume-Bars
+ Last-Minute-Info: Die MischBuffer befinden sich jetzt im XMS-Speicher.
+                   Im übrigen ist irgendwo beim Vibrato noch ein Bug,
+                   wahrscheinlich, weil ich nicht so genau weiß, wie man
+                   diesen Effect codet ( In Tech.doc [ST3] und Xm.txt [FT2]
+                   steht's nicht drin, also wenn du was hast, schick's mir!!)
+
+ Ich habe in Imphobia 7 den Artikel < 386,486 processors for demos > von
+ Sigfried/Impact gelesen... Wir sollten wirklich viel mehr auf die
+ Geschwindigkeit unserer Proggys achten.. Daher werden in dem Demo folgende
+ Effects nicht unterstützt:
+   Finetune: spart eine Menge Zeit, da für jede angeschlagene Note ein DIV
+             benötigt wird.
+   Vibrato : Weil man Tabellen benötigt, und ich außerdem immer noch nicht
+             weiß, wie man diesen Effect überhaupt codet ;)
+   Arpeggio: Dieser verdammte Befehl geht mir am meisten auf die Nerven
+             ( Precalculations, Tabellen ... )
+ Auch mit Portamentos sollte man sparsam umgehen, denn sie erleichtern die
+ berechnungen auch nicht gerade.
+ Bei Portamento to Note wird zu einer Handling-Routine geJMPt, dadurch wird
+ das Portamento langsamer, der Code insgesamt aber schneller, wenn man
+ Portamento nicht benützt...
+
+░▒▓▓ 2. TMI  ▓▓▒░──────────────────────────────────────────────────────────── 004 - 14.10.96
+
+Neues Handle, neues Outfit! ;)
+THE MODULE I ist jetzt komplett in Assembler ( bis auf die Laderoutine ),
+ab jetzt code ich 2 Versionen: eine Standard-Version und eine Demo-Version
+( Demo-Version is optimized to its maximum ( I hope ) )
+Sorry, daß ich bis jetzt die EXEs mitgeschickt habe, war dumm von mir...
+
+░▒▓▓ 2. TMI  ▓▓▒░──────────────────────────────────────────────────────────── 006 - 21.10.96
+
+ Momentan arbeite ich an der autoamtischen SB-Erkennung ( Port/IRQ/DMA )
+ Dabei habe ich bemerkt, daß du die Standard-Segmentanweisungen und nicht
+ wie ich die vereinfachten in deinen Assembler-Proggys verwendest.
+
+ Well, Die SB-Erkennung-Routinen sind sowieso in eine Include-Datei
+ ausgelagert, also habe ich sie gleich mit den Standard-Segmentanweisungen
+ geschrieben - mit der Folge, daß ich sie nicht mehr in meinem Player
+ verwenden kann. Ich muß erst den ganzen Player umschreiben... Tough task...
+ BTW: Diese Abbreviations... Was bedeutet eigentlich IMHO ? Es muß irgendwas
+ wie " Im großen und ganzen" heißen, aber was genau? Nach langem Nachdenken
+ bin ich darauf gekommen, daß AFAIK " As Far As I Know " heißt... Ein
+ Glück, daß die Amis den Buchstaben K am Wortanfang nicht so gern mögen, sonst
+ wäre ich auch darauf nicht gekommen ;)
+ Das Problem bei diesen Unterschiedlichen Segmentanweisungen ist u.a., daß
+ ich bei den vereinfachten statt
+   MOV AX, [MEM]
+ direkt
+   MOV AX, MEM
+ schreiben kann. Also muß ich alle Mem-Zugriffe umändern... Wird einige
+ Zeit brauchen...
+
+ Im übrigen habe ich jetzt die SB-Erkennung fertig. Als BASE-IO-Adresses
+ erkennt er 210-280, als IRQs 2,3,5,7,10 und als DMA 0,1,3.
+ Getestet habe ich IRQ 5,7,10 bei DMA=1. Wenn du andere Einstellungen
+ machen kannst, überprüfe bitte auch die anderen Einstellungen, aber
+ IMHO ;) müßten sie funktionieren...
+ Einen BUG habe ich noch in der Routine: Wenn ich nach einem DEMO wie
+ Hex Appeal FindSB laufen lasse, findet er die Soundkarte auch bei
+ mehrmaligem SB-Reset nicht... Merkwürdig, dieser Fehler taucht nur bei
+ meinem alten 386SX-20 auf... ( auf dem Pentium läuft Hex Appeal nicht )
+ Jetzt darf ich auf dem 386 debuggen... (BTW: Die Musax von Hex Appeal ist
+ neben CD2 die coolste, die ich habe!!! )
+ Aber es ist nur eine Frage der Zeit bis auch dieser Bug gefunden und
+ endgültig eliminiert wird... ( Diese Frage der Zeit hat mich das ganze
+ Wochenende gekostet B(, ich hoffe, daß ich ihn jetzt endgültig finde...)
+
+ Ganz nebenbei habe ich einen fatalen Fehler in meinen DMA-Init-Routinen
+ gefunden, was aber bei mir komischerweise nie Auswirkungen auf den DMA-
+ Transfer gehabt hat ( vielleicht spielt der Player deswegen auf deinem
+ Rechner die MODs nicht mehr korrekt ab ). Wichtig ist, ob dieser Fehler
+ erst bei der letzten Version auftaucht, die ich dir geschickt habe, ansonsten
+ gibt es noch einen BUG :(
+
+ Hoffentlich habe ich bis Freitag das Umschreiben auf Standard-
+ Segmentanweisungen und reinen Assembler ( = keine Bildschirmausgabe mehr...)
+ Dann schicke ich dir die DEMO-Version :) des Players.
+
+░▒▓▓ 3. TMI  ▓▓▒░──────────────────────────────────────────────────────────── 007 - 25.10.96
+
+ Drittens, diese SB-Erkennung: Es funktionierte perfekt auf meinem Pentium,
+ Also habe ich die SB in meinen 386 eingebaut, wo meine Erkennung natürlich
+ nicht mehr funktioniert hat. Also mußte ich sie auf dem 386er neu coden...
+ Okay, jetzt funktioniert sie auf dem 386er - aber nicht mehr auf dem
+ Pentium! That's too bad...
+ Ich habe keine Ahnung, wann ich eine Version zusammenbekomme, die auf beiden
+ funktioniert.
+
+░▒▓▓ 1. TMI  ▓▓▒░──────────────────────────────────────────────────────────── 008
+
+ TOP-Neuigkeiten! Ich habe die SB-Erkennung fertig! Sie läuft auf beiden
+ PCs ohne Probleme (bis auf DMA 3, da wird auf BEIDEN Rechnern nur Schrott
+ abgespielt [ liegt aber wahrscheinlich an der Soundkarte/DMA-Controller ]
+ Denn auch SAGA oder UNTITLED werden nicht korrekt abgespielt ). TESTE
+ unbedingt DMA 3 !!!
+ Der größte BUG bei der vorigen Version war, daß ich den FlipFlop des
+ DMA-Controllers an der falschen Stelle resettet habe. Unmittelbar nach dem
+ Reset muß der Low-Wert von Adresse/Länge übergeben werden. Bei schnellen
+ Rechnern macht es also nichts aus, wenn der FlipFlop schon ein paar
+ Anweisungen früher resettet wurde, sehr wohl aber bei 386ern... Abgesehen
+ davon war noch ein BUG in der INTERRUPT-Routine ( Gut zu Debuggen :) ).
+ Aber jetzt läuft alles. BTW: Könntest du diese Version in allen bei dir
+ möglichen Kombinationen checken ? Nicht daß wir noch einen BUG übersehen!
+ OK, TMI läuft jetzt im IDEAL-Mode, und hat anscheinend keinen Schaden
+ genommen... ;) Insgesamt an die 300 Fehler ausgebessert!
+ Nächster Schritt: Laderoutine in Assembler ( Dann kann ich endgültig diesen
+ idiotischen TPASCAL-Mode weglassen )
+ OK, Laderoutine funktioniert, Player ist jetzt in reinem Assembler!
+ Jetzt stehe ich vor 3 Problemen:
+       - Ich muß in Pascal irgendwie auf Daten zugreifen können, ansonsten
+         kann ich nichts aunzeigen ( schlecht bei BUGs im ASM-Player )
+       - Ich kann keine Konstanten im Data-Segment definieren, wenn ich
+         den Player in Pascal einbinden will
+       - ich brauche einen 65kB großen Puffer für die Samples ( ich kann
+         die Daten von Festplatte nicht direkt in RMEM laden )
+         Pascal erlaubt aber keine anderen Segmente!
+ OK, ich habe das Ganze folgendermaßen gelöst:
+ Es gibt zwei Konfigurationen, in der der ASM-Player assembliert werden
+ kann ( Flag TPUsed definiert oder nicht definiert )
+   In der Pascal-Version ( TPUsed definiert ) werden die zur Anzeige
+   benötigten Daten im Pascal-Proggy definiert ( der Player hat sie EXTRN
+   deklariert ).
+   In der INCLUDE-Version werden die EXTRN-Variablen normal deklariert,
+   außerdem das END deaktiviert und die Procs WriteFlat und ReadFlat
+   deaktiviert ( sie werden in der INCLUDE-Datei FlatASM.ASM deklariert, die
+   [ im Gegensatz zu FlatPAS.ASM ] Messages [ im Data-Segment ] ausgibt.
+
+ Die Erkennung der SB-Card erfolgt in der INCLUDE-Datei Find1.ASM.
+ ( DMA 210h-280h, IRQ 2,3,5,7,10, DMA 0,1,3 SB/SBPro Erkennung)
+
+ Als kleines Beispiel habe ich ein ASM-Proggy gecodet, die sämtliche
+ Messages ausgibt, und dann das Abspielen startet. Ein Testmodul ( ASM.MOD )
+ gibt es auch dazu, Ehrensache :)
+
+ Wenn du die PASCAL-Version kompilieren willst, entferne das ; in SB1.ASM in
+ Zeile 16! ( Das mit dem <Open Conditional> geht nicht anders, stört aber
+ auch nicht. )
+ Vergiß das ; aber nicht wieder zurückzutun, wenn du die ASM-Version
+ kompilieren willst, sonst gibt es ein paar kleine Fehlermeldungen !
+ Ein Problem gibt es noch: es werden Messages in FIND1.ASM ausgegeben, die
+ Konstanten im Data-Segment benötigen. Da es in der PASCAL-Version diese
+ Konstanten nicht gibt, wird, bevor MODULE3.GRF angezeigt wird, lauter
+ Crap angezeigt. Ich könnte die Messages natürlich im Codesegment
+ unterbringen, aber das ist nicht notwendig, die Pascal-Version ist sowieso
+ nur als TestVersion gedacht, wenn's wieder ans Debuggen geht o.ä.
+
+ ALSO, DAS PROJEKT >DEMO I< KANN BEGINNEN !
+
+ LAST-MINUTE-INFO: Eben habe ich zum Test die Soundkarte ( das 4.Mal! ) in
+                   den 386er eingebaut - und wäre beinahe verrückt geworden!
+                   Soundkarte wird erkannt: ADR 240, IRQ 0Ah, DMA 0, der 1ste
+                   Block wird berechnet - und der PC stürzt ab!
+                   Nach langem Rätseln kam ich darauf, daß das nur bei IRQ 0Ah
+                   der Fall ist! Erst dachte ich, der Pointer auf die
+                   Interrupt-Adresse wird nicht korrekt berechnet. Endlich
+                   bin ich auf den BUG gekommen: In SB1.ASM stand in Zeile
+                   383 <0A0> statt <0A1>: Die Folge, statt einen End-of-Inter-
+                   rupt sendete die SB-Interrupt-Routine einen völlig
+                   chaotischen Maskierungswert an den PIC!!! Es wurden auf
+                   dem 2.PIC also wichtige Interrupts unterdrückt und andere
+                   nicht besetzte ( zeigen irgendwohin ) erlaubt -> PC springt
+                   ins Nirwana...
+                   Übrigens, DMA 3 wird NIE korrekt abgespielt, immer nur
+                   Schrott! ( Ist aber auch bei UNTITLED der Fall :( )
+                   Liegt das an der Soundkarte ? Wenn ich DMA 0 einstelle,
+                   spielt er das erste Mal auch wirklich DMA 0 ab, beim
+                   zweiten Mal erkennt er aber <DMA 1> - und spielt das Ganze
+                   WIEDER korrekt ab !?! Liegt das vielleicht auch an meiner
+                   Soundkarte ?
+
+░▒▓▓ 2. TMI    ▓▓▒░────────────────────────────────────────────────────────── R7 - 29.10.96
+
+ Die Files STRTools.Pas und TXTools.PAS loade ich dir auch endlich up,
+ sorry, ich hab's immer wieder vergessen...
+ Yup, wieder eine ( hoffentlich ) große Änderung in TMI: Der Timer-Interrupt
+ wird nicht mehr benötigt! Alles läuft jetzt über den SB-Interrupt! ( Spart
+ meiner Meinung nach viel Zeit, abgesehen davon brauche ich keine rieseigen
+ Speicherbereiche mehr, sondern brauche bei 22000 Hz Mixing-Freq 2 Buffer
+ ( Double-Buffering ) á 22000/50 ( ticks pro Sekunde ) = 440 Byte, ( die
+ Mixing-Proc berechnet immer einen kompletten Tick ). Also bei 22000 Mono
+ 880 Byte, bei Stereo 1760 Byte. Man muß immer damit rechnen, daß der
+ Segmentsprung (Linearer Speicher: FFFF->0000) genau in der Mitte dieses
+ Buffers ist, also das ganze nochmal *2, also im Endeffekt max. 3520 Bytes,
+ die auch im Datasegment Platz haben -> schneller ! Ach ja, plus der PreCalc-
+ Speicher von 440 Words (Mono), bzw. 880 Words (Stereo)
+ ( ich berechne erst den ganzen Tick für eine Stimme und schreibe ihn in den
+   PreCalc-Buffer, dann die zweite Stimme... und teile das ganze dann durch 4,
+   das ist schneller, weil die ganzen Datas für das momentane Instrument
+   ( Loop, Vol, Position, Length...) über das ganze Tick in Registern
+   untergebracht werden. Der Nachteil, man braucht einen extra Word-Speicher-
+   Bereich )
+ In Summe also _5280_ Bytes im Datasegment für die ganzen Berechnungen, ist
+ das zu viel? ( Wenn ja, müssen sämtliche Player-Daten in einem anderen
+ Segment untergebracht werden... )
+ OK, ich habe es ausprobiert, der Buffer paßt sowohl im PASCAL- als auch
+ im ASM-Mode in das Datasegment. Jetzt geht es ans Coden... ( BTW: noch ein
+ schöner Nebeneffekt, man sieht im Pascal-Mode wirklich die Zeile, die gerade
+ abgespielt wird, und nicht die, die erst in der nächsten Sekunde abgespielt
+ wird ) Ich weiß wirklich nicht, wieso ich das nicht schon von Anfang an
+ so gecodet habe...
+ ...
+ Hi, back again! Fertig! Timer-Interrupt wird nicht verändert, alles läuft
+ über SB-Interrupt, in der Pascal-Version wird die korrekte Zeile angezeigt,
+ und ganz nebenbei funktioniert <DMA 3> jetzt auch ordnungsgemäß. Whew!
+ BTW: Nur beim ersten Mal! Beim 2. Mal erkennt er <DMA 1> statt <DMA 3> und
+ spielt nur Schrott ab, und beim dritten Mal erkennt er <DMA 1> und spielt
+ alles sauber ab ... Strange! Aber was soll's. Vielleicht liegt's an der
+ Soundkarte. Den Grund für das Knacksen am Anfang habe ich nicht gefunden,
+ ich schalte den Lautsprecher einfach erst nach dem 1. Tick ein, klingt
+ sauberer.
+ Ob man das ganze mit dem Retrace synchronisieren kann, weiß ich nicht, hab's
+ noch nicht ausprobiert, dürfte aber IMHO nicht so schwer sein...
+
+░▒▓▓ 5. TMI  ▓▓▒░──────────────────────────────────────────────────────────── R8 - 01.11.96
+
+ Der HD-Controller belegt nur auf XTs einen DMA-Kanal ( auf ATs ist direkter
+ Zugriff schneller! ) Mit der neuen Version funktioniert DMA 3 problemlos,
+ wahrscheinlich ist irgendwas mit dem Page-Register des DMA-Controllers, ist
+ aber egal, ich benütze ab jetzt sowieso nur normalen RAM für die Mixbuffer.
+ Folgende Neuerungen werden noch implementiert, bis ich fürs erste damit
+ aufhöre:
+  (¹) 4/8 Tracks  ( es werden Code-Manipulations nötig sein...)
+  ( ) minor optimizations ( Index-Jumps statt CMPs )
+  (¹) Mono/Stereo ( auch hier Codemanipulations... )
+  ( ) Pattern-Anzeige in Assembler
+ Die Mixing-Frequenz wird momentan noch auf konstant 22000Hz gelassen ( Gute
+ Qualität, wenig Performance-Verlust ). Wenn ich variable Mixing-Rates machen
+ würde, würde die Geschwindigkeit darunter leiden, bzw. ich müßte ewig viele
+ Code-Manipulations machen. Unmöglich ist das nicht, aber... Mal sehn...
+
+ YUP, es ist wieder einmal soweit: 4 Tracks oder 8 Tracks, je nach Wahl :)
+ Wichtig ist, daß das 8-Track-MOD die Kennung "8CHN" hat, sonst gibt's
+ Chaos... Ganze 6 Codemanipulationen waren notwendig! Auch ich werde beim
+ Composen auf 8 Tracks umsteigen, man hat wesentlich mehr Möglichkeiten und
+ die Akkorde müssen nicht mehr in einem Sample abgespeichert sein.
+ Es ist nicht schwierig, den Player auf 16...32 Tracks zu erweitern, aber ob
+ das sinnvoll ist...
+ Der Pascal-ModPlayer ist nicht so flexibel. Da muß man per Hand in MODP.Pas
+ die beiden Konstanten PatBytes (1024 oder 2048) und PatTracks (4 oder 8)
+ verändern. Dafür kann man aber während des Abspielens mit   über die 8
+ Tracks scrollen.
+ Vielleicht, wenn ich viiieeel Zeit habe, werde ich den ganzen Pascal-Player
+ in Assembler umschreiben, dann wird der Code in SB1.ASM noch übersichtlicher.
+
+ BTW: Ich habe einen BUG in FT2 entdeckt: Er konvertiert S3M-Module nicht
+ ordnungsgemäß...
+
+ ──STEREO──────────────
+ Ich habe eine zweite MixProcedure nur für Stereo gecodet, weil es nicht so
+ viele Codemanipulationen braucht und außerdem die Mono-Version nicht
+ verlangsamt wird. Der Aufruf der Mix-Proc im SB-Interrupt muß natürlich auch
+ modifiziert werden, aber das macht PlayMod ein einziges Mal -> also auch hier
+ keine Verlangsamung.
+ Zum Test habe ich die SB mal auf Stereo schalten wollen ( normalerweise müßte
+ sie alles normal abspielen, bis auf die Tonhöhe ) Der Interrupt ist da, aber
+ es gibt keine Ausgabe! Garnichts! Kein Knacksen o.ä. !!!
+ Ich habe in PCIntern nachgelesen:
+  - Man muß den Mixer auf Stereo umschalten ( Kein Problem )
+  - Dann muß man eine DUMMY-DMA-AUSGABE starten: Ein Block der Länge 1, der
+    den Wert 80h enthalten muß!!! Und das bei JEDER SB-Pro-kompatiblen Karte!
+  - Erst dann kann die eigentliche DMA-Übertragung beginnen...
+ Ich wundere mich, wie dann der Player von PCUnderground funktionieren kann...
+ OK, ich hab's, wieso es keine Ausgabe gab: Der Lautsprecher muß VOR dem
+ Start des DMA-Transfers eingeschaltet werden, nachher geht nix mehr !!!
+
+ So, what do you think of this ? Stereo, 8 Channel!!!
+ OK, Stereo ist auch implementiert. Erstaunlich, was man an schulfreien Tagen
+ alles schaffen kann. :)
+ Ich habe das ganze so gelöst, daß Track 0,1/0-3 auf den einen Kanal geht und
+ Track 2,3/4-7 auf den anderen. Besonders CLASSIC.MOD und RAINY.MOD hören
+ sich bei dieser Verteilung gut an...
+ Übrigens, der Player von UNEATABLE, CUBIC PLAYER oder RED spielen das erste
+ Mal die Songs doppelt so schnell ab - schlampig gecodet... Passiert meinem
+ Player nicht! :)
+
+ BTW: Eine WICHTIGE Frage: Der Interrupt-Handler muß entweder SBMixMono oder
+      SBMixStereo aufrufen. Wie kann ich das am Besten Coden ?
+      Ich hab's mit Codemanipulation versucht :
+        CALL [W 1111h]   und dann 1111h verändern, aber da häng er sich auf,
+                         weil er an der Speicherstelle 1111h nach der
+                         Sprungadresse sucht.
+        MOV BX,1111h
+        CALL [W BX]      funktioniert auch nicht, weil er wieder an der
+                         Speicherstelle [BX] nach der Sprungadresse sucht...
+      Könntest du mir da weiterhelfen ?
+
+ Ich habe mich endgültig dazu durchgerungen, Pascal ganz zu verlassen:
+ Alle EXTRN-Variablen sind herausgenommen, alle IF-Statements sind weg...
+ Ich werde mich in nächster Zeit an das Pattern-Viewer machen, so kann ich
+ nämlich nicht debuggen...
+
+ Mit IData/Udata ist ASMPlay bei mir unkomprimiert 82720 Byte groß, mit
+ PKLite komprimiert nur noch 6213 Bytes!!! Wir könnten damit sogar ein Intro
+ für den 64KByte-Wettbewerb coden! :) Fahren wir im Winter nach Dänemark zu
+ The Party ? :)
+
+ Ich müßte am Montag ( hoffentlich ) mit den kleineren Optimizations und dem
+ Pattern-Viewer fertig sein, dann gibt's <The Module II>.
+
+░▒▓▓ 4. TMII  ▓▓▒░─────────────────────────────────────────────────────────── R9 - 4.11.96
+
+ Here it is, finally released at the 3rd of November ! TMII ! So, vorläufig
+ wäre unser Player fertig für das Demo ! Abgesehen von Code-Optimizations,
+ die mir vielleicht einfallen werden, ändere ich momentan nichts mehr. Mono
+ und Stereo funktionieren, 8 Tracks sind auch möglich, was braucht man mehr
+ für sein 1.Demo... Der Pattern-Viewer ist diesmal etwas schlichter und sein
+ Code ist entsetzlich und sollte nicht mehr Assembler genannt werden :)
+ Aber er dient ja sowieso nur zur Kontrolle!
+ BTW: In TMI 1.7 waren die Kanäle verkehrt herum:
+      T0,1/0-3->rechts,
+      T2,3/4-7->links
+      statt andersrum. Jetzt spielt TMII sie richtig ab.
+ Ich werde mich als nächstes an den EYEBALL-Effect machen...
+
+ Denkste... Heute ( Samstag ) habe ich einen BUG in der Vibrato-Umsetzung
+ gefunden! Um ihn korrigieren zu können, müßte ich vielleicht die GANZE
+ Handlingroutine neu schreiben! 8'-(
+ Ich glaube, ich werde erst einmal ohne Vibrato auskommen müssen...
+ Hast du vielleicht schon was neues zu Vibrato ?
+ Die Finetune-Berechnung dauert auch viieel zu lang. Man müßte sie in die
+ PreCalcs auslagern.. Man könnte auch bei den Tone Portamentos ein wenig
+ optimieren, aber was soll's. Mir reicht's langsam mit TMII...
+
+ Was mir gerade aufgefallen ist, weil ich doch unterschiedliche Farben für
+ die Effects hernehme: TASM berichtet überhaupt garnix, wenn zufällig mal das
+ Datasegment überlaufen sollte, wie es gerade bei TMII passiert ist. Hab' ne
+ ganze Weile gebraucht, bis ich draufgekommen bin !
+ Vielleicht sollten wir doch ein Xtrasegment für die TMII-Vars definieren...
+
+░▒▓▓ 3. TMII ▓▓▒░──────────────────────────────────────────────────────────── 010
+
+ Hast du ein Beispiel für WIRKLICHE Codeoptimizations ? Ich meine, wo alles
+ wie Code-Alignment etc. drin ist... Vielleicht einen Quellcode von einem
+ Demo... ? Ich weiß nicht genau, wie ich TMII noch mehr optimieren könnte. :(
+
+BTW: Ich code erst einmal einen eigenen Editor, der 100% auf Assembler
+     ausgerichtet ist. Die folgenden Features werden eingebaut:
+     - XMS-Support.
+     - PROC-Location: Die Zeile, in der eine PROC oder ein MACRO anfängt,
+                      wird abgespeichert und kann in einem Fenster ausgewählt
+                      werden, der Cursor springt dann auf diese Zeile.
+     - Alle Standard-Befehle ( Suchen... )
+     - feste Zeilenlänge: max. 180 Zeichen.
+     - mehrere Fenster.
+     - Assembler-Config-Menü.
+     - Verschiedene Farben für Befehle.
+     - Auch Pascal-Dateien können mit externem Compiler kompiliert werden.
+       ( TPC.EXE )
+
+
+░▒▓▓ 2. TMII ▓▓▒░──────────────────────────────────────────────────────────── 011 - 10.11.96
+
+Der Arpeggio-Effect wird doch in den PreCalcs auf den Effect <8> "umgebogen",
+und in diesem MOD gibt es im Track 7 in jeder ersten Zeile eines Patterns den
+Effect <8oo>, ich glaube, daß es zu Synchronisationszwecken drin ist. Da TMII
+bis jetzt diese ( unnötigen ) Einträge nicht gelöscht hat, hat er beim
+Abspielen gedacht, das wäre ein Arpeggio mit den Operanden 0,0. Schlecht. Ich
+habe in die PreCalcs diese Löschprozedur eingebaut, jetzt spielt er es wieder
+normal ab.
+Das zweite Problem ist das sogenannte Fine-Portamento Up/Dn. Das war bei TMII
+noch nicht eingebaut, weil ich gedacht habe, daß dieser Effect sowieso so gut
+wie nie verwendet wird ( Ebenso wie Fine-Volumeslide Up/Dn ). Also gut ich
+baue auch diese 4 Effects mit ein. Ich weiß nicht, ob ich es bis Montag
+schaffe, aber ich lagere die Finetune-Berechnungen auch in die PreCalcs aus...
+Soweit zu TMII, Vibrato ist so schlecht, hast du immer noch nichts ? :)
+
+░▒▓▓ 3. TMII ▓▓▒░──────────────────────────────────────────────────────────── 016
+
+ Es werden ein paar entscheidende Neuerungen gemacht, sobald wir mit der
+ R-Evolution No. 9 fertig sind:
+  - veränderbare BPM-Rate ( Nur der Vollständigkeit halber, im Demo ist sowas
+    Nonsens [ ähh, Latein verfolgt dich dein ganzes Leben lang :) ] , man
+    kann dann nämlich nicht mehr mit dem Bildschirmaufbau synchronisieren. )
+    Deswegen hat auch MidNight Run nicht gefunzt.
+  - FLATASM.ASM wird nicht mehr direkt benutzt ( nicht weiter schwer )
+    Es wird nur eine DWORD-Adresse verlangt.
+  - Vibrato wird korrigiert, sobald ich INFOS habe ( Hast du schon was ? )
+
+░▒▓▓ 1. TMII ▓▓▒░──────────────────────────────────────────────────────────── 017
+
+ Ich habe TMII ein wenig abgewandelt, sodaß man jetzt als Parameter das
+ zu spielende Mod-File übergeben kann. Keine große Änderung, aber als
+ Abwechslung zu dieser wirklich schwierigen REvolution...
+ BTW: Ich habe TMII in die EUMEL.BBS upgeloadet, ich hoffe du hast nix
+      dagegen... Ich weiß nicht, was ich von diesen EUMELS ( Points der
+      Eumel.BBS ) halten soll. Es gibt zwar 2 Demo-Freaks, aber sie coden
+      in GNU-Pascal o.ä. !?!?! Ich wäre aber dagegen, sie in ALPiNE aufzu-
+      nehmen, zu zweit sind wir produktiver und haben keine Lamer in der
+      Gruppe !!! ( Die NFO-File hat dieses Logo: )
+
+.───────-─────-────-──-─---¨   THE MODULE II   ¨--─-──-────-────────-────────.
+│                                                                   [Syrius] │
+│   ▄███████▄  ███      ███████▄  ██¦ ▄███████▄   ▄████████▀                 │
+│  Ì██▀   ▀██¦ ███      ▄▄▄   ██¦ ▄▄  ███   Ì██¦ Ì██▀                        │
+│  ███     ███ ███      ███   Ì██ ██¦ ███    ███ ██████                      │
+│  ███▄▄▄▄¦███ Ì██▄     ████████▀ ███ ███    ███ Ì██▄                        │
+│  ███▀▀▀▀ ███  ▀██████ ███       ███ ███   Ì██¦  ▀████████▄  PRESENTS:      │
+│                                                                            │
+│.──────-─────-────-──-─---¨   THE MODULE II   ¨--─-──-────-────────-───────.│
+
+ In Scene.ger habe ich bis jetzt noch nie einen sinnvollen Beitrag erhalten.
+ gibt es denn nix internationales ? Oder geht das nur auf IRC ?
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 048
+
+ Okay, hier ist mal der GENAUE Gedankenweg, wie ich TMII umcoden werde!
+ So, als erstes hier mal die Struktur eines Eintrags in einem Pattern.
+
+    byte 0        byte 1        byte 2        byte 3
+  [■■■■ ■■■■]   [■■■■ ■■■■]   [■■■■ ■■■■]   [■■■■ ■■■■]
+    │    │           │          │     │          │
+  Instr  Note       Note      Instr  FX.         FX-Param
+  High   8-11       0-7       Low    Command
+
+ Das wird von einer Precalc-Routine 'n bißchen umgebaut:
+
+    byte 0        byte 1        byte 2        byte 3
+  [■■■■ ■■■■]   [■■■■ ■■■■]   [■■■■ ■■■■]   [■■■■ ■■■■]
+       │             │          │     │          │
+  Instrument       Note        FX-   Note      Param
+                            Command  8-11
+
+ Vielleicht ist die anordnung etwas strange, aber Intel-Format speichert
+ zuerst Low, dann Highbyte! D.h. ich lese ein word an [DI+1] und ANDe das
+ Highbyte mit 0Fh, und schon habe ich den Eintrag auf die Tabelle.
+ Ich berechne die Finetunes auch gleich in die <Note> rein! D.h. TM3 wird
+ wirklich nur .TM3-Module lesen können! :( Sobald ich die Grundstruktur
+ halbwegs habe, muß ich einen Converter schreiben. WICHTIG! Jede .MOD-File
+ kann zu .TM3 konvertiert werden, ABER .TM3-Files können nicht mehr zu
+ .MODs zurückkonvertiert werden... Macht aber eh nix...
+
+ Gut, sämtliche Sicherheitsabfragen brauchen bei TM3-Files NICHT gemacht zu
+ werden...
+ Okay, ich mach' mich jetzt an die Grundstruktur...
+
+ Habe ich noch vor JuFo gemacht, und ich habe gedacht, es ist etwas geniales,
+ bis ich herausgefunden habe ( Thanx 4 FMOD ) , dass es wahrscheinlich schon
+ jeder so macht :( Oh, well, ansonsten habe ich eigentlich nur Imphobia
+ gelesen. Was soll's...
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 049
+
+ Ich habe den Converter fast fertig. Ich bin momentan gerade beim Durchlesen
+ von diesen FMOD-DOCS. Da ist alles ausführlich beschrieben, was ich in TMII
+ stolz als geniale Ideen reingecodet habe... :( Naja, es gibt auch ein paar
+ neue Sachen, die den Player die dringend benötigten Speed-Ups geben werden...
+ :)
+
+ Whew, back from school! ;) Ich habe FMOD.DOC ausdrucken lassen, ist relativ
+ viel geworden, ich wollte eigentlich noch FMODSB und FMODS3M auch noch aus-
+ drucken, aber ¸100 Seiten wären doch etwas zu viel geworden.
+ Ich habe gerade ein bißchen in FMODS3M reingelesen. Da MUSS man die Frequenz
+ eines Samples so berechnen wie ich es in TMII mache (i.e. mit DIV und MUL ;()
+ Jetzt gibt es 3 Möglichkeiten:
+   1- Ich setze alles auf Geschwindigkeit und werde unkompatibel zu S3M und
+      werde es womöglich nie unterstützen.
+   2- Ich lasse die DIVs in TM3 drin ( Vorteil: Ich bräuchte den Mixer nicht
+      neu schreiben. Nachteil: Geschwindigkeit )
+   3- Ich benutze Tables und werde S3Ms in ein eigenes Format umwandeln.
+
+ Am Konjunktiv bei 2 erkennt man, daß das relativ unwahrscheinlich ist... ;)
+ Aber das XM-Format arbeitet auch mit Runtime-DIV/MULs !?!?!?!
+ Naja, spätestens in 1 oder 2 Jahren code ich wahrscheinlich sowieso einen
+ neuen Player... ;)
+
+ BTW: Es gibt Sachen, da habe ich anscheinend einen total anderen Gedankengang
+      gehabt als der in FMOD.DOC! Ich habe z.B. nie an tabellen gedacht
+      sondern die Frequenz immer brav mit DIV ausgerechnet... Was so eine
+      DOC alles erleichtern kann... ;)
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 050
+
+ Verflixt, ich habe immer die falschen DIVs optimieren wollen! Die Frequenz
+ wird schlimmstenfalls ( Portamenti ) nur 50x pro Sekunde berechnet. Um auch
+ diese DIVs herauszuoptimieren müßte ich eine Tabelle mit 4*2^12=16384 Bytes
+ anlegen.
+
+ Zur Zeit überlege ich mir noch die effektivste Weise des Mixings. Ich glaube,
+ ich werde es folgendermaßen machen:
+
+  Das kann man auch in eine Tabelle legen ( Siehe Volumetables von ST3 ;)
+  Ein Sample-byte hat einen Wert zwischen 0-255 ( die Samples sind NICHT mehr
+  signed! ) Die Volumes sind 0-64, also brauche ich eine Tabelle mit 65*256=
+  16640 Bytes.
+  Diese Tabelle benütze ich 1. für die Volume, und 2. für das Panning...
+  Siehe FIRST.DOC
+
+  Besonderheiten, die in TM3 eingebaut werden:
+  * Teilweise S3M - Support ( Muß aber vorher in TM3 konvertiert werden )
+  * Volume-Column! ( wegen XM / S3M -> Zwei Effects gleichzeitig möglich )
+  * Panning!  ( Panning von 0-80h! )
+  * Surround Sound! ( Die Channel-Num muß dazu aber leider verdoppelt werden )
+
+  ( Ich habe mir schon überlegt, wie ich Surround-Sound mache, aber irgendwie
+    dürfte bei meiner Version die Qualität drastisch sinken ;( !!! )
+
+ So der Converter ist knapp vor der Fertigstellung... Fehlt nur noch die
+ ganze Pattern-Konvertierung...
+ Ou, ou, I'm running out of time...
+ Okay, die Pattern-Convertierung ist geschrieben. Debugging kommt noch
+ BTW: Die Note-Column ist schon integriert, sie ist nur bei MODs mit 00h
+      gefüllt... -> 5 Byte pro Kanal...
+
+░▒▓▓ S3Mer ▓▓▒░──────────────────────────────────────────────────────────────
+
+ Ähm, mir hat die Musik von Unreal einfach zu gut gefallen... Also habe ich
+ ein ganz stupides Proggy gecodet, das einfach nach der SCRM-Kennung sucht
+ und dann den Teil von Unreal.exe bis zum nächsten SCRM in eine neue Datei
+ schreibt. Kannste ja mal ausprobieren. Das Ergebnis sind 5 riesige Dateien
+ mit anderen Datas am Ende, die du am besten in ST3 lädst und anschließend
+ wieder speicherst:
+ Voilá, das wären die Original-Files... Die musix von PM sind wieder mal
+ in ein S3M untergebracht. ich habe sie in verschiedene Files aufgeteilt...
+ Hmm, mir fällt erst jetzt auf, daß mir die Musix in dem Demo viel besser
+ gefallen als allein. Das ganze war also nutzlose Arbeit, aber naja. Zumindest
+ die Samples kann ich rippen.
+
+ BTW: War das eigentlich die neueste Version von FMODDOC ? XM wurde 1994
+      entwickelt, die erste Version von FXMDOC sollte doch schon released sein...
+
+░▒▓▓ MODs ▓▓▒░───────────────────────────────────────────────────────────────
+
+ Diese Woche habe ich wieder einmal besonders sinnvoll verbracht. Außer
+ dem Converter habe ich meine Drum-Columns verbessert ( Nicht böse sein
+ wegen der rieeeesigen files! ;) Aber ich glaube, langsam hört sich das
+ Schlagzeug auch wirklich nach Schlagzeug an und nicht nach Computer, oder ?
+ BTW: Ich habe absolut keine Ideen in die Melodien gesteckt, weil wie gesagt
+      die Drums das wichtige waren ( hör dir doch mal die Drums von z.B.
+      REvolution oder auch noch LETDIE an, dann weißt du, was ich meine... )
+ Jetzt werde ich noch ein bißchen mit Vibrato und Portamento experimentieren..
+ Aber keine Angst, ich werde dir nicht nochmal so unnütze Sachen schicken.
+ ( Allerdings weiß ich nicht, wann ich die Ausdauer habe, mal einen richtigen
+   Song zu schreiben. Du hörst ja an REvolution, daß ich eigentlich immer
+   total verschiedene Ideen habe, die gar nicht zu einem Song passen...
+   (Was aber auch ein Vorteil sein kann, wenn man verschiedenartige Songs
+    composen will)  )
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 051
+
+ Whaaa! Ich muß mich beeilen! Ich kann gerade mal MOD unterstützen und
+ jetzt gibt es schon das .IT-Format !!! HELP! ;) Naja, okay, machen wir's
+ so: Ich code jetzt einen MOD-Player, ergänze die Volume-Tables und dann
+ S3M-Support und dann .XM-Support und dann dieses verdammte .IT-Format...
+ Das ganze kann etwa 5 Jahre dauern ;)
+ BTW: Dieser Pulse soll angeblich ein relativ mieser Coder sein... ;)
+
+ So, den ersten Schritt hätten wir: Er konvertiert MOD in TM3 einwandfrei.
+ Kurzer Vergleich: <Test.MOD>: 12500 Bytes, <Test.TM3>:11863 ;)
+ Und das, obwohl ich auch noch die Volume-Columnes eingebaut habe! (5 Byte
+ pro Channel statt 4)
+ Liegt an den Samples ( Ich speichere nur den nötigen Teil des Samples ab! )
+ Siehe dazu FIRST.DOC
+
+░▒▓▓ MODS ▓▓▒░─────────────────────────────────────────────────────────────── 052
+
+ Okay, einfach ausgedrückt ist das so: Man sollte möglichst wenig ( 1 Kanal )
+ für die Drums verwenden. Aber man kann ja gleichzeitig ja nur ein Sample
+ auf einem Kanal spielen. Das heißt, man muß auf einem Kanal alle Drums so
+ spielen, daß es sich anhört, als würde man alle gleichzeitig spielen. Jetzt
+ versucht man, möglichst verzwickte Rythmen zu composen, wo sich Base (
+ Grundschlag)  Snaredrum und Hihat schnell abwechseln. Außerdem hört sich das
+ ganze viel besser an ( und ich meine wirklich VIEL ) wenn sich der Rythmus
+ dauernd ändert bzw. wenn Snaredrum und Hihat in dem vorgegebenen Rythmus
+ etwas variieren. Ich glaube, ich darf sagen, daß die Drums in Slide2 und
+ Swing2 bis jetzt am besten anhören, obwohl REvolution mehr als einen Kanal
+ für Drums benötigt. BTW: Hör dir bei den Songs von PM oder Zodiak nur mal den
+ Drum-Channel an, dann weißt du, was ich meine... Achte auf die "Unregelmäßig-
+ keiten". Die machen einen guten Drum-Channel aus...
+
+ Leider ist es nicht so, daß sofort ein perfekter Song rauskommt, wenn einem
+ eine gute Melodie einfällt. Die Begleitung ist noch das wenigste! Vibratos,
+ Portamenti, Spezial Effects. Ein Song muß genauso "gecodet" werden wie ein
+ Code... Naja, vielleicht ist die Ausführung einfacher, aber dafür nützt einem
+ das alles nichts, wenn man keine neuen Ideen hat... Und das ist schwer...
+
+░▒▓▓ TM3 ▓▓▒░────────────────────────────────────────────────────────────────
+
+ So, jetzt kommt FULL SB/SBPRO-Support dran ( verschiedene Mixing-Rates bis
+ 44,100 Stereo )
+ Unterstützte IRQ sind: 2,3,5,7,10, unterstützte DMAs 0,1,3. Ich glaube nicht
+ daß man mehr Einstellungen unterstützen muß.
+
+ Vielleicht denkst du, das ist nichts großartiges, aber MANN, ich habe gerade
+ einen PMode-Interrupt OHNE Debuggen geschafft!
+ Ich habe auch eine Check-Settings-Routine eingebaut, mit der man manuell
+ eingestellte Settings überprüfen kann. Leider weiß ich nicht, wie man fest-
+ stellen kann, ob den Interrupt WIRKLICH die Soundkarte ausgelöst hat oder
+ vielleicht ein anderes Gerät. Es funzt soweit, aber es läßt bei mir auch
+ IRQ 5 ( SCSI! ) und sämtliche DMAs durch ( keine Ahnung, woran das liegt. )
+ Muß mir noch Infos holen, i.e. PCINTERN ausleihen. Ist aber nicht sooo
+ wichtig.
+
+ So, jetzt geht's zur Sache: der eigentliche IRQ-MODPLAYER kommt jetzt dran...
+ ( Ist auch nicht gerade einfach, denn hier kommt der ABSOLUT neue Teil von
+   TM3... )
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 054
+
+ Stand der Dinge: Instabil ;)
+  - SB / SBPro AutoDetection funzt.  ( IRQ 2,3,5,7,10; DMA 0,1,3 )
+  - SB-Settings-Check funzt ( Alle vorgegebenen Settings, DMA nur 0,1,3! )
+  - AutoInit- / Double-Buffering-Set-up funzt. ( Mono/Stereo )
+  - SB-Interrupt funzt, taktet regelmäßig. KEIN Timer-Interrupt nötig.
+  - SB Mono  : 0..22000    ( wird noch auf 44000 geändert
+       Stereo: 6000..44000 ( bzw. 21000 bei Standard-SB )
+  - SB16 wird NICHT unterstützt.
+
+ Und das ist verdammt wenig :(
+
+ Working on Pattern-Processing-Unit ... Okay.
+ BTW: ein netter Gag: Die Interrupt-Routine schaltet sich selbst ab. Wenn man
+      das Flag [IRQ_Stop] setzt, wird beim nächsten IRQ die Terminate-Proc
+      [QuitTM3] aufgerufen. Diese setzt wiederum das Flag [IRQ_Finished]
+      Dadurch ist gewährleistet, daß auch der zuletzt berechnete Block fertig-
+      gespielt wird.
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 055
+
+ Okay, das Tracking-Fenster funzt jetzt ( Beachte die 4. Spalte -> Volume-
+ Column! )
+ So, jetzt weiß ich, was gespielt wird, jetzt geht's an die Tables...
+ Hmm, die Sample-Datas und Pitch-Datas funzen.
+
+ BTW: Ich bin gerade draufgekommen, daß es ein Blödsinn ist, erst .MOD und
+      dann .S3M - Player zu coden! Man kann sich sehr viel Arbeit sparen,
+      wenn man schon ungefähr weiß, wie S3M funzt. Z.B. das leidige Thema
+      Finetunes. Es ist überhaupt nicht notwendig, sie in eine Tabelle
+      einzubauen, weil man die S3M-Werte gar nicht mehr in einer Tabelle
+      unterbringen kann...
+      Damit kann ich den Note-Index in ein Byte unterbringen und muß keine
+      Bytes mehr maskieren ( Jeder Wert hat ein eigenes Byte! )
+
+ So, die Mixing-Proc ist im Grunde genommen fertig ( bis auf die 1 SHL 5000
+ Bugs, aber die kriege ich schon irgendwie raus. )
+ Sie unterstützt Samples > 64KB ( aber das TM3-Format noch nicht ;)
+ theoretisch auch die NNAs von IT, aber das erfordert noch einiges an Arbeit...
+ Am Wochenende darf ich auf die Chemie-Schux lernen, also werde ich nicht bis
+ Montag fertig... Aber nächsten Freitag, vielleicht - hoffentlich ;)
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 056
+
+ Eh, sorry, das ich es noch nicht gesagt habe, aber die Mixing-Proc funzt
+ natürlich noch nicht! ( Ich bin ja auch kein Zauberer ;)
+ Aber die IRQ-Steuerung funzt, und der Buffer wird auch Ordnungsgemäß
+ abgespielt!!! Ich muß nur noch den Buffer füllen! Und das kommt auch schon
+ ziemlich bald! ( Hopefully! )
+ BTW: Latürnich kommen Envelopes in TM3 rein! ( Daß die TM3s größer sind als
+      die MODs liegt daran, daß ich die VOLUME-COLUMN schon mit eingebaut
+      habe!!! ( Es gibt momentan noch keine Kompression, aber das kommt
+      auch noch )
+
+ BTW2: Ich code TM3 schon sehr S3M/XM/IT-orientiert. Die Mix-Proc kann bis
+       auf die 16-Bit-Samples in ALLEN Formaten benutzt werden!
+       Panning gibt es auch ( latürnich nur Stereo! ) Jetzt kommt es nur noch
+       auf die Haupt-Proc an.
+
+ So, ich bin gerade bei den PostProcessing-Tables angelangt. Ich glaube, ich
+ berechne es so, wie ich es will, und nicht so, wie es in TECH.DOC steht...
+
+ BTW: Durch diese PostProcessing-Tables wird es möglich, auch ungerade
+      Kanäle ordnungsgemäß abzuspielen ( z.B. 7 Channels )
+      Man kann auch die Lautstärke manuell verändern. Also wenn das so klappt,
+      wie ich mir das vorstelle, bekommt Pascal harte Konkurrenz. ;)
+
+ Giant Leap once again! Die PostProcess-Table wird richtig berechnet!
+ Heh, die MixVolume ( die IMHO absolut unnütz und auf einer GUS sowieso
+ nicht möglich ist ) wird nicht gebraucht.
+ Man kann Runtime die PostProc-Table verändern, indem man [PPLoudness]
+ verändert. [PPLoudness] beinhaltet die Steigung der Geraden der PostProc-
+ Table, je größer die Steigung, desto lauter die Ausgabe ( Vorsicht, wenn
+ es zu laut ist, gibt's Clicks, just as in any other Player!
+ BTW: Der Player braucht jetzt schon ungefähr 200 KB RealMEM. Das liegt nicht
+      daran, das ich schlampig code, sondern weil IT 128 Instrumente
+      unterstützt. Wenn alles andere fertig ist, wird natürlich nur soviel
+      MEM allokiert, wieviel nötig ist.
+ So, ich habe gerade wegen dem Bug unten die Mix-Proc überarbeiten dürfen.
+ Des weiteren habe ich die TM3-Filestruktur erneuert ( Siehe TM3.DOC oder
+ TM3_VARS.ASM )
+
+ Wahhh! TM3 nimmt gigantische Ausmaße an!!! Allein die CSamples-Structure
+ hat PRO SAMPLE 64 BYTE!!! ( Und ich weiß nicht ob die reichen werden! )
+ Ich muß zigmal die ganze Anordnung in CSamples umwerfen, was zur Folge hat,
+ daß auch ich auch sämtliche Indices umschreiben muß. Ein gefundenes Fressen
+ für Bugs! ( BTW: Der Player nähert sich den 1500 Zeilen, und funzen tut
+ bis jetzt gerade mal der IRQ-Init... )
+
+ Ich bin leider doch nicht soweit gekommen, wie ich kommen wollte, und am
+ Montag schreiben wir Chemie. Das einzige Fach, wo ich bis jetzt wirklich
+ keinen blassen Schimmer habe, was wir eigentlich die letzten Monate
+ gemacht habe ( Thanx to diesem Trottel von Chemie-Lehrer ) Naja, zum Glück
+ fällt mir Chemie nicht übermäßig schwer. Hat viel Logik.
+
+ BTW: Ich benütze an einer Stelle SHR EAX,16 statt BSWAP EAX. Soll ich
+      SHR lassen, oder soll TM3 nur noch auf 486ern laufen ?
+
+ So, ich habe TM3 das erste mal laufen lassen -> Überlauf bei Division ?!?!?
+
+░▒▓▓ XM vs. MOD. ▓▓▒░────────────────────────────────────────────────────────
+
+ Sowohl XM als auch S3M benützen Delta-Packing! Ich werde dieses Delta-Packing
+ auch in TM3 einbauen, aber im Speicher werden die Pattern wieder entpackt,
+ ich sehe keinen Grund, weshalb das Depacking auf Kosten der Geschwindigkeit
+ gehen soll. Obwohl... Wenn ich's mir genau überlege, könnte das auch dadurch
+ schneller werden. Naja, ich habe momentan sowieso genug zu tun...
+
+ Ob sich envelopes lohnen, weiß ich nicht. Ich bin mit dem composen noch nicht
+ so weit ( ich werde es auch wahrscheinlich nicht weit bringen, ich code
+ lieber ) Aber wenn Alpine mal einen Musician hat, dann soll er keine
+ Einschränkungen in seiner Kreativität haben, oder ? Naja, gut, Envelopes
+ haben noch Zeit, aber TM3 wird modular aufgebaut und ist ausbaufähig
+ ( Hmm, irgendwo habe ich das schonmal gehört, soll was mit 3D zu tun haben ;)
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 057
+
+ Ich bin mir nicht sicher, aber ich glaube, ich habe einen Trick heraus-
+ gefunden, mit dem unser Player etwas schneller als ALLE anderen Player
+ sein dürfte ( natürlich nur SB, GUS gilt nicht! ;)
+ Zumindest schreibt KEIN EINZIGES DOC, daß FinalPan DIREKT in die Volumes
+ berechnet werden kann. Naja, einen so gewaltigen Geschwindigkeitsvorteil
+ bringt das zwar nicht, aber es vereinfacht das Mixing UNGEHEUER!
+ Nächster Trick: Man kann die Volume-Tables für die Panning->Volume-Berechnung
+ verwenden -> Keine MULs !!! und das ganze hat man in ein paar Instructions.
+ Wenn ich noch ein paar solche Tricks finde, wird jeder den Geschwindigkeits-
+ zuwachs spüren ! Auf jeden Fall werde ich sehr aufmerksam coden. Gerade
+ solche Tricks gehören zu den besten Optimierungsmöglichkeiten...
+ BTW: Wenn man erst einen GUS-Player schreibt, und dann auf SB erweitert,
+      kommt man SICHER nicht auf solche Tricks, weil die GUS-Routinen ganz
+      anders arbeiten. Ist also ein Vorteil, daß ich noch keine GUS habe. ;)
+
+ So, ich glaube, der Player lädt alle Daten ordnungsgemäß. Der Screen ist
+ schon ein richtiger Debug-Screen geworden. ;) Aber die Daten, die in
+ CSamples berechnet werden, sehen alle recht realistisch aus. Jetzt kann es
+ nur noch sein, daß ich einen Algo-Fehler irgendwo eingebaut habe, aber das
+ hoffe ich nicht...
+
+ Yippie!!! Es funzt!!! Zwar total verrauscht aber man hört schon die Melodie!
+ Wenn ich Glück habe, wird TM3 bis Pfingsten fertig! ;)
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 059
+
+ Sorry, ich habe schon letztes Mal eine Version fertig gehabt, die ohne dem
+ Rauschen gefunzt hat, aber wegen diesem Directory-Delete habe ich es
+ vergessen.
+ Ich habe gedacht, daß ich dieses Wochenende ziemlich weit kommen werde, weil
+ ich keine Hausaufgaben aufhabe, aber leider hat ein Bug 95% meiner Freizeit
+ aufgefressen...
+
+ Alles funzt bestens bis auf ein Prob: Er spielt alles doppelt so schnell
+ ab! Es wäre die einfachste Sache der Welt, den Fehler zu beheben, aber
+ er spielt es in der KORREKTEN TONHÖHE ab!!!! ( Normalerweise werden Samples
+ immer höher, je schneller man sie spielt! )
+ Ich habe es hier also mit 2 Bugs zu tun, die sich aber gegenseitig teilweise
+ aufheben! Das ist das fieseste, was es gibt, denn sie verwischen sich gegen-
+ seitig die Spuren!
+ Ich suche schon den ganzen Tag und habe bald keine Lust mehr!
+
+ Ich habe ihn! Es ist 20.50 Uhr und er ist weg, der Bug! Ich habe in der
+ Variablen BytesPerSecond den doppelten Wert abgespeichert, weil der Player
+ bei Stereo ja doppelt soviele Bytes berechnen muß. Das stimmt zwar bei der
+ Initialisierung ( von der ich immer gedacht habe, daß sie buggy ist ), aber
+ in der Mixing-Routine werden je 2 Bytes in einem Loop berechnet, also braucht
+ die Anzahl der Loops bei Stereo nicht verdoppelt werden.
+ Ein schöner Nebeneffekt von diesem Bug ist, daß er auch im gerade
+ abzuspielenden Buffer rumgeschrieben hat, was nette Clicks verursacht hat...
+ Also, der Bug ist weg, ich kann alle Samplefrequenzen bis 44kHz abspielen,
+ und es gibt einen kristallklaren Sound!!! Abgesehen davon funzt das Panning
+ auch einwandfrei...
+ Momentan gibt es die MixProc nur in der Stereo-Variante, also kannst du
+ momentan noch nichts ( bzw. nur Schrott ) hören. Aber die Monovariante ist
+ eher eine Vereinfachung als eine Verkomplizierung der Mix-Proc, wird sofort
+ erledigt...
+
+ Heh, back again. So, jetzt kannst du auch den superb Klang von TM3 genießen!
+ Ebenfalls bis 44kHz. Aber die wird die original SB wahrscheinlich nicht
+ unterstützen.
+ oops! Ich glaube, mir ist ein kleiner Fehler unterlaufen. Die SB 2.0 unter-
+ stützt nur Sampling-Rates bis 22kHz. Richtig?
+ Dann gibt es auf der 2.0 auch keinen Highspeed-DMA. D.h. daß die jetzige
+ Version gar nicht laufen dürfte... Probier's mal aus und sag's mir dann...
+ BTW: SB 1.o wird nicht unterstützt und wird auch nicht unterstützt werden.
+      Sie kennt keinen Auto-Init-Mode, und es ist mir zu blöd, einen Single-
+      Cycle-Mode zu schreiben... SB16 wird auch noch nicht unterstützt, wird
+      aber noch unterstützt werden... ( Ich habe mir schon die 16Bit-
+      Funktionen durchgelesen, müßte alles ziemlich einfach klappen... )
+ Okay, auch erledigt. Er benützt bis 22kHz den normalen autoinit-DMA-Mode 1Ch
+ Erst bei 23kHz wird auf den Highspeed-DMA-Mode 90h umgeschaltet...
+
+ So, jetzt werde ich eine platzsparende Änderung im TM3-Format machen: Die
+ Pattern werden wie im S3M-Format gepackt! Gleichzeitig werden die Pattern-
+ Effects noch konvertiert...
+
+ Ich habe eine Liste zusammengestellt ( EFFECTS.ASM ) in der ALLE Effects, die
+ es gibt, eingetragen sind ( MOD/S3M/XM/IT ) Jetzt habe ich mal ein bißchen
+ darüber nachgedacht, wie sinnvoll es eigentlich ist, IT zu unterstützen...
+ Es ist Schwachsinn! Für Kompositionen ist das vielleicht sinnvoll, aber für
+ Demos ist das denkbar ungeeignet. Die ganzen Überprüfungen würden sich ganz
+ schön negativ auf die Performance auswirken... Ich bin mir nicht einmal
+ sicher, ob XMs mit den Envelopes sinnvoll sind...
+ Immerhin ist die TM3-Zuordnung so gewählt, daß ich jederzeit die fehlenden
+ Effects einbauen kann... ( * bedeutet: Wird wahrscheinlich eingebaut. )
+
+ Gut, also jetzt kommt der S3M/MOD-Converter.
+ Ich habe LANGE, LANGE, und ich meine wirklich LANGE nachgedacht ob ich XM/IT 
+ unterstützen soll oder nicht. Ich bin zum Entschluß gekommen, daß ich NUR 
+ mod/s3m unterstütze.
+ Das hat vor allem folgende Gründe:
+     - Die Virtuellen Kanäle von IT brauchen VIEL Rechenzeit und auf der GUS
+       machen sie nicht viel Sinn
+     - Der Player wird riesig, wenn ich die ganzen Envelopes etc. unterstützen
+       will.
+     - Ein guter Musiker ( eg. PM ) kann auch aus S3M / MOD das maximum
+       herausholen.
+     - Will ich in erster Linie einen Player oder ein Demo schreiben ?
+
+ Der Nachteil dabei ist der, daß ich einen neuen Player für XM/IT schreiben
+ werden muß. Aber wie gesagt, man kann auch mit S3M unglaubliche Tunes
+ schreiben.
+
+ Das einzige, was mir an der ganzen Sache leid tut, ist die RICHTIGE Panning-
+ Unterstützung, die in meinem Player schon funktioniert. Naja, ich werde halt
+ einfach in IT ein paar unerlaubte Commands in das S3M-File schleusen.. ;)
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 060
+
+ Okay, jetzt kommt der S3M->TM3-Converter. Das ist deshalb nützlich, weil es
+ viel überflüssiges in dem S3M-File gibt, TM3 wird ein RAW-Modulformat, du
+ liest einfach alle Daten ein, und die Sache hat sich.
+ Wir wollen ja ein 64k-Intro machen. Da muß das ganze Demo mit TM3-File Platz
+ in einem Segment haben. Ich werde das so machen, daß wir ein riesiges Array
+ haben, in dem das komprimierte TM3 drin ist.
+ Falsch, es geht noch besser:
+ Ich mache ein INC-File ( NICHT TM3! ), daß folgenden Aufbau hat:
+ Songlength db ....
+   (Header)
+ SampleData db ......
+      db ......
+      etc.
+ Patterns db...
+    db...
+ Samples  db...
+    db...
+ Dann brauchen wir keine Laderoutine mehr!!!!  UND Compack packt die Datei
+ mit! Mit PMODE kann man alles in einem Segment drin haben, alles bestens!
+ Aber zuerst kommt jetzt der S3M-TM3-Converter!
+ Ou Mann, wenn die Schule nicht wäre, wäre TM3 schon längst fertig ;(
+
+ Hmm, also das Panning von S3M taugt nichts! Ich werde aus TM3 also das
+ Panning wieder entfernen( Läßt sich sogar etwas optimieren )
+ TM3 wird dadurch etwas schneller, aber das Panning ist damit definitiv weg!
+ Aber für die 16 Panning-Stufen, die s3m unterstützt, ist die Unterstützung
+ nicht wert!
+ Hmm, ich bin nicht weit gekommen, das Wetter ist zu schön... ;)
+
+░▒▓▓ TM3 ▓▓▒░────────────────────────────────────────────────────────────────
+
+ Es gab keinen einzigen implementierten Effect! Nur die Instrumente
+ und Noten wurden korrekt interpretiert (ist doch auch schon was! C2SPD wird
+ korrekt interpretiert, das ganze ist NICHT Sampling-Rate-Abhängig, und ein
+ paar Gedanken habe ich schon verschwendet, wie man dieses oder jedes MUL/DIV
+ weglassen könnte... Speed-Probleme sind somit erklärt.
+ Mit dem "Verstummen" läßt sich auch leicht erklären: Pattern Break ( D00 )
+ in Teaspoon.Mod...
+ Aber jetzt werde ich die Effects einbauen, sobald ich S3M-Converter und
+ -Unpacker habe...
+
+ einen MOD-Converter wird es ab jetzt nicht mehr geben, denn man kann ja das
+ MOD vorher mit einem Tracker in ein S3M umwandeln. Das ist doch nur
+ verschwendete Coderzeit...
+
+ Da ich keinen allgemeinen Player code, kann ich ein paar Vorraussetzungen
+ machen: Es gibt KEINE Fast Volume-Slides!
+
+ S3M2TM3 entwickelt sich zu einem Mammut-Programm: Es hat schon ~600 Zeilen,
+ und ich arbeite INTENSIV mit Macros...
+
+ WICHTIG! ICH HABE EINEN FEHLER IN FIRELIGHT'S S3M-DOC gefunden: In Zeile
+ 792 ist die File-Variable nicht 13 sondern 12 Bytes lang!!!! Ich habe mich
+ die ganze Zeit gewundert, warum ich dauernd Schrott aus der Datei lese...
+ Kannst du Firelight meine Messy schicken ? Adresse steht in den DOCs...
+
+ Yeah! Der Converter ist fertig! 597 Zeilen, und das Ergebnis kann sich sehen
+ lassen: INSPIRAT.S3M - 13.968 Bytes
+                 .TM3 - 10.143 Bytes
+ und das bei einem Chip-Tune, wo die Samples sicher nicht "unverschwenderisch"
+ abgespeichert waren! Der S3M-Header ist sowas von schwachsinnig aufgebaut...
+ So, jetzt schreibe ich ein Pascal-Check-Proggy und dann kommt der Loader
+ ( Pattern-Entpacker! ), und dann kommen endlich die Effects...
+
+ Yup, das Pascal-Check-Proggy ist fertig, die Patterns scheinen korrekt
+ modifiziert worden zu sein... Okay, jetzt kommt der Entpacker...
+
+ BTW: Vergiß den Shit, den ich über das Panning geschrieben habe: IT
+      kontrolliert nicht, ob die FX in S3M unterstützt werden oder nicht,
+      d.h. ich kann das Panning im IT-Format unterstützen, sozusagen
+      extended S3M ;)
+
+ Das mit der Funktion der Zeit habe ich schon mal vorgeschlagen, aber du hast
+ gesagt, das Sample würde dadurch etwas "unecht" klingen. Und du hast recht.
+ ABER es spart ETWAS an Bytes. (BTW: Ich habe keine Ahnung, wie gut sich
+ Samples mit Compack packen lassen. Muß ich mal testen )
+ Es gibt aber noch eine andere Möglichkeit: Chiptunes. schau dir doch mal die
+ Samples von PM's Inspiration an! Nur das Schlagzeug ist größer als 1k, meist
+ sind die Samples 16-128 Bytes. Daß sich das nicht besonders schön anhört,
+ ist klar, aber im Endeffekt würde bei der Funktionsmethode das selbe raus-
+ kommen...
+ Naja, man kann schon etwas mehr als 16 Bytes benutzen, das hört sich dann
+ ungefähr wie ADRIFT an... Aber ich weiß nicht, wie man solche Samples macht...
+ Ich kann ja noch nicht mal Composen...
+
+ Heute komme ich wieder prächtig voran: Der Unpacker ist fertig! So, jetzt
+ muß ich noch 'n bißchen debuggen, dann muß ich mein Zimmer aufräumen, dann
+ 'n bißchen helfen, und morgen fahren wir!!!
+ Yeah! Der Unpacker funzt auch! Aber die Tonhöhen werden aus irgend einem
+ Grund noch nicht richtig abgespeichert... Okay, alles klar, hab' ein INC
+ vergessen...
+
+ Heh, es funzt wieder!!! Er spielt S3Ms ab! Aber wieso gibt es bei geloopten
+ Samples so ein komisches Knacken ?
+ STUNDEN SPÄTER: Ich habe statt einem JNE ein JNS geschrieben!!! Das hat
+                 bewirkt, daß ich immer ein Pattern zu viel ausgelesen habe!!!
+
+ Tja, jetzt kannst du SÄMTLICHE S3Ms mit TM3 anhören! Die Effects passen noch
+ nicht, aber LEM-PIAN.S3M hört sich auch so ganz nett an!
+
+ WICHTIG! MACH JA NICHT DEN FEHLER WIE ICH UND LASSE ALTE TM3S ABSPIELEN!
+ Ich habe wie verrückt nach einem Fehler gesucht, der gar nicht da war!
+
+ So, jetzt kommen die ersten Effects dran: Volume+Volume Slide!
+
+ Heh! Ich hab's geschafft! Die BPM-Changes funzen!!! Dabei war ich schon total
+ verzweifelt ( die verrücktesten Bugs, die ich bis jetzt gesehen habe, aber
+ das ist bei Hardware-Programmierung ohne excellente DOCs immer so B( )...
+ Das ist die WICHTIGSTE Neuerung im ganzen Player, alles andere ist mehr oder
+ weniger Routine! Und jetzt dazu, was das bringt:
+    - Autoinit-Double-Buffering ist ca. doppelt so schnell wie ein Ringbuffer!
+      Gut für Geschwindigkeit...
+    - Ich brauche den Timer endgültig nicht!
+    - Mit Double Buffering kann der IRQ um einen GANZEN Tick unterdrückt
+      werden. D.H. du brauchst keine Angst zu haben, daß evtl. Clicks
+      auftreten, sondern kannst ruhig mal länger CLI / STI machen!
+    - etc.
+
+ Oh nein! Der DSP setzt bei einem Reset den Ausgang auf 80h ( Wertebereich
+ 0-ffh bei SB, 80h ist die "Ruhelage" ) Am besten, ich erkläre dir, wie ich
+ die BPM-Changes mache:
+ Ich habe einen Double-Buffer:
+
+ 1┌───────────────┬───────────────┐
+  │    Buf1       │      Buf2     │
+  └───────────────┴───────────────┘
+                 ^---  oder   ---^
+                 Zuletzt gespieltes Byte
+
+ Jetzt tritt im Pattern ein BPM-Change auf ( BPM * 2 / 5 = Ticks pro Sekunde,
+ wenn es dir nicht klar ist, lies Abschnitt 3.1.1 in FMODDOC.TXT )
+ also berechne ich die Daten dieses Ticks in Buf1 eines zweiten
+ Double-Buffers. Beim nächsten IRQ resette ich den DSP und programmiere ihn
+ und den DMA auf Double-Buffer 2:
+
+ 2┌─────────────────────┬─────────────────────┐
+  │    Buf1             │            Buf2     │
+  └─────────────────────┴─────────────────────┘
+
+ Aus der Sicht der SB schaut das folgendermaßen aus:
+ z.B.
+ 1┌────────────────┬2┌─────────────────────┬
+  │ Buf1 oder Buf2 │ │    Buf1             │
+  └────────────────┴^└─────────────────────┴
+                    |
+                 BPM-Change!
+
+ Aber beim Reset des DSP bleibt der Ausgang leider nicht auf dem letzten Byte
+ sondern wird auf 80h gesetzt:
+
+         ** *
+      **  | | **
+     *    | |   *
+ --------- * ----*-------------*------->
+           ^      *           *
+           |       **      **
+       BPM-Change     ****
+
+  Ich versuche es jetzt mal mit Software-Rampdown, aber die Ideallösung ist
+  das nicht! B(
+
+  Okay, hier mal zusammenfassend die neuigkeiten:
+  - S3M-TM3-Converter. ( War hart, aber ist schon seit den ersten Ferientagen
+                         fertig )
+  - TM3-Unpacker bis zu 32 Channels, bis zu 99 Samples ( dito )
+  - Mixer-Modifications ( stürzte bei PIANOGRAPHY ab! )
+  - Panning! ( Momentan wird nur Channel-Orientation unterstützt )
+  - Global Volume wird unterstützt.
+  - Effect Axx: Set Speed
+  - Effect Txx: Set Tempo. $#@$%^ damit habe ich immer noch Probs ( s. o. )
+  - Timer-synchronized Split-Screen-Effect ;)
+  - Tracking-Window ( funzt nur bei 4 Channels )
+  - Additional Info.
+  - Proper Mono-Support ( I hope ;)
+  - Volume-Slide ( BUGGY, momentan auskommentiert )
+
+░▒▓▓ TM3/Wired ▓▓▒░────────────────────────────────────────────────────────── 062
+
+ Shit! Die SB 16, die auf der Wired verwendet wird, ist AFAIK nicht SBPro-
+ kompatibel. Und ich habe auch keine GUS! Ich kenne auch keinen, der SB 16
+ hat!!!! Ich frage mal im Fido nach, ob die SB 16 wirklich keine SBPro-
+ Commands unterstützt...
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 063
+
+ Nein, Panning Envelopes werden nicht unterstützt, aber das ist auch nicht
+ nötig:
+ - Normales Panning wird wie die Volume gesteuert, es gibt also Set-Panning
+   und Panning-Slide-Commandos. Diese Commandos werden unterstützt.
+ - Panning Envelopes sind etwas anderes. Envelopes werden generell erst ab
+   .XM unterstützt, sie bestimmen das Panning zu einem bestimmten zeitpunkt,
+   OHNE explizit von Panning-Effects gesteuert zu werden.
+   Anders gesagt ist ein Envelope nichts anderes als eine vorgegebene
+   Panning-Sequenz. Diese Sequenz kann man aber auch mit den obigen Effects
+   realisieren, warum also die CPU unnötig belasten ?
+
+   Ich wollte auch in diese neue Starwars-Trilogie ( Es gab bei uns einen Tag,
+   wo alle 3 "erneuerten" Folgen hintereinander gespielt wurden! 6 Std Star
+   Wars! )
+   Aber irgendwie ist dann doch nichts draus geworden...
+
+ Das mit der Filelength hat damit zu tun, daß es einen Bug in S3M2TM3 gibt,
+ der sich aber anscheinend nicht auf den Player auswirkt. Ich werde ihn mal
+ suchen...
+ BTW: Bei mir stürzt der Player nicht ab... Das wird wieder ewig dauern, bis
+      ich den Bug habe...
+
+ Tja, sieht so aus, als wäre ich an einem Punkt angekommen, wo es nicht mehr
+ weitergeht. Ich kriege die Clicks bei den BPM-Changes nicht weg... :(
+ Ich schreibe Pulse eine Mail, wenn er sie nicht beantworten kann, gibt es
+ bei BPM-Changes Clicks bis in alle Ewigkeit!
+ ( Hoffentlich kann er mir eine DOC nennen )
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 064
+
+ Also gut, ich lasse mal die BPM-Changes weg, sonst werden wir nie fertig...
+ Das mit der GUS ist so eine Sache. Einerseits möchte ich das Geld nicht
+ für die 60DM-GUS rausschmeißen, andererseits: wieso jetzt eine ~215-DM-Karte
+ kaufen, die SICHER billiger wird !?! Ich glaube nicht, daß es uns auf die
+ paar Bytes ankommt!
+ Ich schaffe das auch mit SB-Support!
+ Und zwar folgendermaßen: Ich mache nur SBPro-Support. Dadurch fällt der
+ ganze Mono-Teil weg. Außerdem werde ich die Autodetection weglassen.
+ Das ganze optimiere ich also auf den Competition-Rechner...
+ Außerdem schreibe ich ja auch die Musix, und alle Effects, die nicht dran
+ kommen, fliegen raus. So einfach ist das!
+ Abgesehen davon gibt es natürlich keine Load-Proc. Ich brauche keine
+ TM3-Initialisierung, das ganze schrumpft auf ein paar Bytes zusammen!
+ Ich werde VSlides, Vibrato, Speed-Change und Portamenti verwenden. Das ist
+ noch zu verkraften...
+
+░▒▓▓ TM3 ▓▓▒░────────────────────────────────────────────────────────────────
+
+Ich mache mich mal auf die Suche nach diesem BUG in S3M2TM3!
+Also das war ein wirklich dummer Bug:
+  Ich habe nur für die Pattern einen Pointer in der S3M-Datei angelegt, die
+  auch im Song vorkommen. Anscheinend hat PM ein paar Pattern drin, die nicht
+  gespielt werden. Für die zeigte der Pointer auf den Header, was natürlich
+  nonsens lieferte...
+  Korrektes Ergebnis:
+      SKYRIDER.S3M:  204.282
+      SKYRIDER.TM3:  198.239
+
+
+ Okay, ich mach mich mal an die Kommandozeilen-Interpretation..
+ Sorry, nicht mehr geschafft. Am Montag, Ehrenwort!
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 065
+
+ Wie versprochen: Die neueste Version von S3M2TM3 unterstützt die Commandline.
+ Wie versprochen: BPM-Changes werden ordnungsgemäß OHNE Clicks abgespielt. ;)
+ Wie versprochen: Die Volume-Slides sind eingebaut.
+                  Hmmm, bißchen buggy.
+                  Debugging... Okay, funzt imho ordentlich.
+ Als ich Pharao.s3m anhörte, wurde mir klar, daß die Postprocessing-Table, so
+ wie ich sie berechne, zu leise sein würde. Also habe ich mich entschlossen,
+ <Mastervol> doch zu unterstützen...
+ Wie versprochen: Mastervol wird ordnungsgemäß unterstützt.
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 067
+
+ Daß es bei dir nicht funzt, kann folgende Gründe haben:
+ 1.) Du spielst alte TM3s ab. Lösche ALLE TM3-Files, sobald du eine neue
+     S3M2TM3-Version kriegst!!!!
+ 2.) Du willst mono abspielen: Das funzt auch nicht! Es gibt noch keine Mono-
+     Unterstützung ( eine Sache von ein paar Minuten, aber ich habe wenig
+     Zeit, morgen ist physik-Schux usw... )
+ Sobald ich Zeit habe, werde ich Mono-Support und provisorischen SB16-Support
+ einbauen. Bitte melde mir dann, ob TM3 immer noch abstürzt.
+ Ich hoffe, daß ich am Wochenende diese Kleinigkeiten und ein paar Effects
+ coden kann. Mal sehn...
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 068
+
+ Ich habe die Variablenanordnung in den Pattern etwas verändert...
+
+       FX-Byte  FX-Num  Note  Sample Volume
+ Byte:    4       3      2      1      0
+
+ Das bringt etwas Geschwindigkeitsvorteile... Und ist erheblich kürzer...
+
+ Noch eine kleine Änderung:
+  Pro Sample sind 17 Bytes notwendig:
+    Start      dd ?
+    Length     dd ?
+    LoopEnd    dd ?
+    C2SPD      dd ?
+    Volume     db ?
+ Es ist naheliegend, daß man die ganzen Vols in einem extra Array unterbringt.
+ Abgesehen davon kann man so leichter auf sie zugreifen ( kein SHL )
+ Dadurch muß aber S3M2TM3 verändert werden. Ich schicke dir die neueste
+ Version. <<< LÖSCHE ALLE ALTEN TM3s!!!!! >>>
+
+ Yeah, TM3 läuft wieder. Es sind ein paar wichtige Änderungen vorgenommen
+ worden:
+   - Zuerst einmal habe ich den Fehler, den mir Pulse geschrieben hat,
+     ausgebessert ( Wenn Panning vorhanden, keine Channel-Flippings! )
+   - Dann habe ich die Volumes der Samples in ein extra Array <SampleVols>
+     ausgelagert. Dadurch braucht der Buffer für die Sample-Daten statt den
+     bisherigen 32 Bytes pro Sample nur noch 16. Abgesehen davon habe ich
+     besseren Zugriff auf die Volumes, weil ( das wird jetzt etwas länger ):
+
+      Background-Wissen:
+        Man hat einen Buffer <CSamples>, in dem die Sample-Daten bzw. Volumes,
+        letzte Effect-Bytes etc. des jeweiligen KANALS gespeichert sind.
+        Daneben hat man den Buffer <Samples> der von dem TM3-File geladen
+        wird und die festen Daten des jeweiligen SAMPLES enthält
+        ( Start-Offset, Length, LoopStart, C2SPD ). Das ist wichtig, denn:
+      Es gibt eine kleine Besonderheit bei den Pattern:
+        Ist das Sample-Byte <> 0, dann hat das NUR Auswirkungen auf die
+        Volume, diese wird auf den Wert des jeweiligen Samples gesetzt.
+        Daneben wird ein Byte <LastSmp> auf die Sample-Nummer gesetzt.
+        Die ganzen anderen Sample-Daten werden nur gesetzt, wenn eine Note
+        im Pattern steht. In der Praxis sieht das so aus:
+        Die Noten-Routine liest <LastSmp> ein und setzt dieses Sample. Dann
+        setzt sie die Frequenz und fertig.
+        Damit kann man folgenden Effect realisieren:
+           SMP:  NOTE:  VOL:  EFFECT:
+            01    C-4    00    D05
+            01    ---    00    D05
+            01    ---    00    D05
+            ...
+        Das ist ein Staccato: D05=Volume slide down um 5. In der nächsten
+        Zeile wird die Volume aber wieder auf die Original-Volume gesetzt.
+        Während der ganzen Zeit werden die Sample-Daten NICHT verändert. Den
+        selben Effect hat auch folgende Sequenz:
+            01    C-4    00    D05
+            04    ---    00    D05
+            10    ---    00    D05
+            55    ---    00    D05
+            34    ---    00    D05
+            18    ---    00    D05
+        Hier werden nicht wild irgendwelche Samples abgespielt, sondern
+        genau wie vorher Sample 01 auf C-4 mit Staccato...
+        ( wenn es dir nicht ganz klar ist, hör dir Zodiak's CHROME.MOD
+          aus Imphobia #7 ( Order 017h oder so ) an! Natürlich mit TM3 ;)
+
+        ( Ich weiß nicht, wie es dir geht, aber ich finde erklären sehr
+          anstrengend, ich denke 10000x schneller als ich den ganzen
+          Schmarrn in verständliche Worte fassen kann... Natürlich soll
+          das jetzt nicht heißen, daß ich das lästig finde, ich werde dich
+          ( wie du mich hoffentlich auch ) über die Fortschritte genau
+          informieren... )
+
+        Vielen Dank, lieber Denis, daß du mir das so ausführlich beschrieben
+        hast, dadurch habe ich einen Fehler in der Volume-Slide-Proc gefunden!
+        ( Wie war das mit dem Selbstlob ? ;)
+        Und das nur, weil FS3MDOC.TXT schon wieder falsch ist!
+        So, Problem solved:
+
+        Es gibt 4 Arten von Volume slides:
+           x0: Volume Slide Up
+           xF: Volume Slide Up nur bei 1. Tick ( ie. Tick 0 )
+           0y: Volume Slide Down
+           Fy: Volume Slide Down nur bei 1. Tick ( ie. Tick 0 )
+        Das Problem ist, diese 4 Typen auseinanderzuhalten. Firelight sagt,
+        man soll nach <Fh> suchen ( in Nibble X oder Y )
+        Das ist aber falsch, man muß ZUERST nach <0h> suchen, da z.B. 0Fh
+        sicher nicht <Fine slide up mit 0> sondern <Slide down mit Fh>
+        bedeutet. War aber nicht schwierig...
+
+        Okay, mono-support included... Bitte um genauen Bugreport!!!
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 069
+
+ Ich komme prächtig voran!
+ Neu implementierte Effects:
+  - Portamento Up / Fine Porta Up / Xtra Fine Porta Up
+  - Portamento Dn / Fine Porta Dn / Xtra Fine Porta Dn
+    ( War schon schon Freitag fertig! )
+
+ Exact wie vor Jugend Forscht! Auf einmal ist der Druck da und alles klappt!
+ Merkwürdig...
+ Heh: Wieder eine große Neuerung:
+  - Tone Portamento Up / Down funzt PERFEKT! Es ist eine Wonne, DOZE.S3M auf
+    dem eigenen Player RICHTIG zu hören!
+  - So, jetzt kommt <Set Global Volume> dran. Okay, funzt auch...
+    Bei Global-volume-Changes MUSS man die Volumes sämtlicher Kanäle neu
+    setzen, auch der schon früher angeschlagenen Töne...
+  - Next one: Note-Cuts... Hmmm, ich mußte S3M2TM3 etwas verändern, aber das
+    klappt jetzt auch.
+  - Ich werde jetzt Pattern Break und Pattern Jump einbauen. Das ist schon
+    etwas schwieriger ( Backwards.s3m )...
+    YEAH! Geschafft! BACKWARD.S3M WIRD ORDNUNGSGEMÄSS ABGESPIELT! Was sagt
+    man dazu! Und das alles an einem einzigen Tag!!!
+
+  So. Ich glaube, mehr Effects wären für das Intro überflüssig..
+  Ich probiere jetzt mal, diesen Special-Tunnel zu coden...
+
+  Uups, wegen dem neuen Pharao werden folgende Befehle noch nötig sein:
+   - Retrigger Note
+   - Pattern Loop...
+
+  Ich weiß nicht, ob ich's heute noch schaffe...
+  Gut, Retrigger ( ohne Volume Change ) ist implementiert, ich habe ein paar
+  Mono-Bugs entfernt, und versuche, jetzt noch Pattern Loop zu integrieren,
+  wenn ich es schaffe, ist der Player fertig ( zumindest für das Intro )
+  Dann muß ich einen TM3_2_INC-Converter schreiben ( Kein Aufwand, mache ich
+  in Pascal )
+  ACHTUNG! ICH HABE EINEN BUG IN S3M2TM3 GEFUNDEN! ALLE TM3-FILES LÖSCHEN!
+  Er unterschied nicht zwischen SetLoopStart und PatternLoop...
+  Okay, Pattern-Loop funzt einwandfrei... DAMIT IST DER PLAYER FERTIG!
+
+  Jetzt bleibt nur noch der S3M - 2 - INC-Converter, aber das schaffe ich
+  jetzt nicht mehr...
+
+░▒▓▓ TM32INC  ▓▓▒░─────────────────────────────────────────────────────────── 072
+
+ Das ist ein Pascal-Proggy, das das Binär-Format in " xx db 001, 002" etc.
+ umwandelt. Wozu das gut sein soll ? TM32INC ist nicht nur ein einfacher
+ Bin2db-converter, er definiert die Variablen, die von dem Loader eingelesen
+ werden müssen, diese Variablen sind also alles Konstanten. Dadurch fällt
+ ( fast ) der ganze Loader weg! Nur das Pattern-Unpacking muß noch gemacht
+ werden, denn die Routine dafür ist kurz und außerdem ist das ja Sinn des
+ Pattern-Compressing, daß man es gepackt in der Datei hat.
+
+ GOSH! Ich habe heute einen einzigen Bug gesucht ( Der Player ist mit dem
+ INC-Format dauernd abgestürzt ) Es hat eine Ewigkeit gedauert, bis ich
+ herausgefunden habe, daß der Fehler bei IT liegt!!!!
+
+ Ich habe TM32INC abgeändert, er funzt jetzt aber nur noch mit IT-S3Ms! :(
+
+ YEAH! Ich brauche so gut wie keine Load-Proc mehr! Alles im INC-Format drin!
+ Und es funzt, man hört keinen Unterschied! Giant Leap once again!
+ Gut, jetzt schreibe ich noch den Tunnel in ASM um, und vielleicht fange ich
+ noch die INTRO-Mainproc an ( wahrscheinlich nicht, es ist 22.30 Uhr), morgen
+ (Sonntag) muß ich meine Referate (!) vorbereiten und werde kaum zum Coden
+ kommen, so sad, so sad, sometimes you feel so sad... ( Beatles ;)
+
+ So, ich habe mal die ASM-Files etwas umgebaut, und schnell einen Player
+ ohne Ausgabe geschrieben. Komprimiert ist PMODE+PLAYER+PHARAO 32966 Bytes
+ groß! Ich glaube, das ist ein akzeptabler Wert.
+
+░▒▓▓ TUNNEL, TIMER ▓▓▒░────────────────────────────────────────────────────── 073
+
+ Okay, ich code jetzt mal die Timer-Routinen.
+ Hier mal ein paar Gedanken dazu:
+ Man schreibt in die Variable <TIMERCALLED dd ?> den Offset der PROC, die man
+ vom Timer aufrufen lassen möchte. Hier kann man Buffer kopieren, FLAGs
+ setzen etc. Wenn gerade nichts benötigt wird, schreibt man
+        mov [TIMERCALLED], O DUMMYTIMER
+ Der Timer wird einmal am Anfang des Demos initialisiert und läuft dann
+ durch. ( Wenn der Screenmode verändert wird, muß es natürlich neu
+ initialisiert werden )
+
+ Okay, die Routinen funzen.
+ Es gibt folgende PROCs:
+ GetScreenFreq  : Ermittelt die Bildschirm-Frequenz und INITIALISIERT VARS!!!
+                  Return: TimerFreq in EBX!
+ NewTimerFreq   : EBX = TimerFrequenz ( Setzt NUR Timer-Freq neu!! )
+ ResetTimer     : Alte Timer-Routines + normale Timer-Geschwindigkeit!
+ SetTimerHandler: Setzt Timer-IRQ-Handler. Bevor es aufgerufen wird, MUSS
+                  [TimerCalled] auf etwas ( Standard=DummyTimer ) zeigen.
+ DummyTimer     : RET ;)
+ WaitVRetrace   : Proc, rate mal!
+ SetBorder      : MACRO.
+ Als erstes immer Getscreenfreq aufrufen. Das setzt einige Vars z.B
+ [TimerCalled] auf DummyTimer.
+ Ein Beispiel-Prog habe ich auch gemacht. ( Ist das nicht toll ? ;)
+
+░▒▓▓ TIMER ▓▓▒░────────────────────────────────────────────────────────────── 074
+
+ Diese Timer-SB-Synchronisation hat mich nicht in Ruhe gelassen. Also habe ich
+ folgendes ausgeheckt:
+ Ich benutze den Timer doch!
+ ABER:
+  - Der Timer läuft mit Screen-Freq und bleibt konstant ( bis auf Screenmode-
+    Changes )
+  - Der SB-Interrupt wird nur dazu benutzt, ein FLAG zu setzen, wenn ein neuer
+    Block berechnet wird. Ist dies der Fall, wird beim nächsten Timer-IRQ
+    NACH den PIC-Calcs zusätzlich noch der nächste DMA-Block berechnet...
+    Der Vorteil ist nämlich der, daß der Player auf konstant 50Hz läuft, und
+    KEIN Screenmode mit kleiner Frequenz arbeitet ( Schlau, was ? ;)
+  - Es werden DEFINITIV ALLE Retraces erfaßt. Man braucht keine Angst mehr zu
+    haben, daß man wegen dem Player den Retrace verpaßt!
+
+ Ich mache mich gleich an die Arbeit...
+
+ Ha! Es funzt! Und wie! Ab jetzt wird TM3 nicht mehr den Retrace stören...
+
+ Ehmmm, da gibt es immer noch das Problem mit dem screen-copy. Ich muß den
+ Timer auf 150 Hz hochtakten, damit er rechtzeitig zum IRQ fertig ist!
+ Alles klar, der Timer wird erst NACH dem Timer-Retrigger aufgerufen.
+
+ Was ist das ?!?!? TM3 und PIC-Copy brauchen zusammen knapp weniger als einen
+ Frame! Was ist los ?!?!?
+
+ Hmmm, es wird einfach nicht bei jedem Frame ein Bild kopiert. Nur die
+ Rotationen werden erhöht.
+ Ich habe leider keine Zeit mehr, um herauszufinden, wie das mit wechselnden
+ Screenmodi gehen soll -> leider muß das ganze Intro in Mode 13h laufen. :(
+
+ Okay, ich habe gerade TUNN_3 mit ASMTM3 kombiniert -> funzt einwandfrei.
+ Morgen werde ich den Timer zum kopieren verwenden...
+
+ Okay, ich habe den ganzen Donnerstag mit Timer und TM3 rumexperimentiert.
+ Es wird keine Bildsynchronisation geben! Ich erkläre es dir auf der Fahrt.
+ Der Timer wird mit ¸70Hz laufen, so wie es Starport auch macht. TM3 wird
+ auch nicht Timer-gesteuert. Der Timer dient nur dazu, bestimmte Variablen zu
+ erhöhen.
+ Glaub's mir, ich habe lange genug herumexperimentiert. Es hängt damit zu-
+ sammen, daß man TM3 NICHT synchronisieren kann. :(
+
+░▒▓▓ TM3 ▓▓▒░────────────────────────────────────────────────────────────────
+
+ Okay, hier mal eine genaue Beschreibung des Aufrufs:
+ - Wenn du eine INC-Datei abspielen möchtest, definierst du TM3INC, ansonsten
+   nicht.
+ - Bei den PROCs : INCLUDE 'TM3_MIX.ASM'
+ - Im Prog:
+     Call SBDetect
+     or al,al
+     jnz @ErrorSB
+
+     Wenn keine INC-File:  mov eax, O FileName
+     Call LoadMOD  ( AUCH BEI INC-FILES )
+     or al,al
+     jnz @ErrorTM3
+
+     mov [Stereo],1
+     mov [LoopIt],1
+     mov [SamplingRate],44000
+     Call PlayTM3
+     ...
+     Call StopTM3
+
+ - Bei Konstanten:
+    INCLUDE 'SONG.INC'  wenn du eine SONG.INC-Datei abspielen willst.
+    INCLUDE 'TM3_CONS.ASM'
+ - Bei Variablen
+    INCLUDE 'TM3_VARS.ASM'
+
+
+ Wichtig für Synchronisation: Es gibt einen Counter namens [TM3_SYNC_COUNT],
+ der bei jeder Zeile um 1 erhöht wird. Den kann man für Syncs hernehmen...
+
+░▒▓▓ Timer ▓▓▒░────────────────────────────────────────────────────────────── 075
+
+ Hmm, dieser Timer läßt mich einfach nicht in Ruhe. Ich versuche mal
+ Quadro-Buffering mit 70Hz, Timergesteuert. Damit müßte man das eigentlich
+ synchronisieren können...
+ Heureka! Na endlich! Ich habe schon gedacht, ich komme nie darauf, wie man
+ TM3 synchronisiert.
+ Folgender Trick: TM3 wird vor dem Retrace ausgeführt, der Timer ist kurz vor
+ dem Retrace fertig. Er wartet auf den Retrace, initialisiert sich neu,
+ ruft [TimerCalled] ( normalerweise DummyTimer ) und ist fertig.
+ Falls du dir das noch nicht so genau überlegt hast:
+ In der [TimerCalled]-Proc:
+  cmp [PicReadyFlag],1
+  jne @NoPicReady
+   CopyPic  ; Macro
+   mov [PicReadyFlag],0
+  @NoPicReady:
+  Call Transform70Hz ; Transformationen werden im 70Hz-Takt ausgeführt, unab-
+                     ; hängig von der Geschwindigkeit des Rechners
+ Im Hauptprogram:
+  @Loop1:
+    cmp [PicReadyFlag],0
+    jne @Loop1
+    CalcPic
+    mov [PicReadyFlag],1
+  jmp @Loop1
+
+  Der Timer kann momentan noch nicht feststellen, um wieviel höher als 70Hz
+  der Timer-Takt sein muß ( ie. wie viel Zeit TM3 verbraucht ) aber das ist
+  jetzt nicht das wichtigste. Ich fange jetzt mal ein bißchen die
+  Synchronisation an...
+
+  Hmm, da ist schon wieder das Problem mit dem Screen-Copy. So kann ich die
+  Synchronisation nicht genau einstellen, wenn bloß jedes 2. Bild berechnet
+  werden kann...
+
+  Timer Copy/Transformieren ? Ich glaube, wir setzen konstant 70Hz voraus.
+  Das müßte auf jeden Fall funzen...  D.h. du kannst bei jedem Copy auch
+  deine Transformationen machen...
+
+░▒▓▓ Timer ▓▓▒░────────────────────────────────────────────────────────────── 076
+
+ So, jetzt müßte es funzen. Wenn es total komisch klingt, versuch, OVERFREQ
+ in TM3_MIX zu erhöhen, damit gibst du TM3 mehr Zeit, denn er muß bis zum
+ Retrace fertig sein...
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 077
+
+ Eine letzte Bahnbrechende Neuerung: TM3 unterstützt jetzt auch Nosound
+ ( für alle Fälle... und für GUS-Freaks ;)
+ Timer.inc heißt ab jetzt TM3_TIME.ASM, sonst vergesse ich es immer...
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 078
+
+ wenn du Zeit hast, könntest du TM3 ( wahrscheinlich spinnt der Loader )
+ mit der SetBorder-Methode durchtracen.
+ Funzt wenigstens der ZBob ?
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 082
+
+  Ich habe noch einen "Bug" in TM3 gefunden. Es hat sich bei "nicht ganz
+  korrekten" Tricks des Tracking aufgehängt.
+  Dazu mußte ich S3M2TM3 etwas abändern, aber es funzt jetzt.
+  Ich schicke dir mein neuestes Modul: "Nothing was not enough..." Ein
+  vielsagender Titel ;)
+  Du mußt erst die Instrumente einbinden. Das geht so ( Schreib' dir am
+  besten die Liste auf einen Zettel )
+  ( Ich benutze bis auf #1 die Samples von der 2. Szene 96 - CD! )
+
+  Impulse Tracker of course, lade Nothing.s3m.
+  Sample-Fenster ( F3 )
+    #1: Ist schon dabei.
+    #2: D:\SAMPLES\DOCSMP97\SYNTH4.IFF  ( Name: Choir1.ifff.)
+        Default Volume auf 64.
+        ALT-B ( Pre-Loop Cut Sample )
+        ALT-E ( Change Sample Length ) Statt 90311 schreibst du 60311, damit
+              auch TM3 das Sample laden kann.
+    #3: D:\SAMPLES\DOCSMP97\BASS.IFF ( Name: Standard Bass. )
+        ALT-Q ( Convert to 8-Bit )
+    #4: D:\SAMPLES\CT_400\CT400.24 ( Name: ct400 wood hit )
+        ALT-Q
+    #5: D:\SAMPLES\DOCSMP97\ACID7.IFF ( Name: Jx_sync.raw )
+    #6: D:\SAMPLES\DOCSMP97\ACID8.IFF ( Name: Dac_go37.sam )
+        Speed ( unter Filename ) = 5264!
+    #7: D:\SAMPLES\DOCSMP97\HIHAT3.IFF ( Name:    )
+    #8: D:\SAMPLES\CT_400\CT400.23 ( Name: Snare )
+        ALT-Q: Convert to 8-Bit.
+
+  Fertig. Enjoy!
+
+  Nun zum Trick: Einmal wird in einem Pattern ein Sample gespielt, ein
+                 andermal nicht, obwohl es doch das selbe Pattern ist! Wie
+                 habe ich das gemacht ? ;)
+                 Diesen Trick habe ich selbst ausgedacht, es gibt nämlich
+                 Pattern, bei denen muß man beim zweiten Durchlauf z.B. eine
+                 Überleitung zum vorigen Pattern machen oder so...
+                 Schau dir dazu am besten das Mod in CP17 an und suche nach
+                 merkwürdigen Einträgen im Pattern... Tip: Du mußt bei den
+                 Sample-Nums suchen, die siehst du nur, wenn CP17 nur 4
+                 Channels darstellt. ( also C,I,T,2xBild glaube ich... )
+
+                 Viel Spaß beim suchen ;)
+
+ Es gibt aber noch einen Bug in TM3... Zu dumm....
+ Ach, ich habe statt 65536 65535 Bytes allokiert. Das eine Byte wurde in
+ die Sample-Liste geschrieben. ;)
+ Es gibt noch Probleme mit 2ND_PM, aber das schaffe ich nicht mehr...
+
+░▒▓▓ TM3 ▓▓▒░──────────────────────────────────────────────────────────────── 084
+
+  Ich mache mich jetzt an das Vibrato...
+  ( BTW: In meinem neuesten Song ( öhmm, ja, ich konnte es wieder mal nicht
+    lassen ;) ist mir aufgefallen, daß eine linear frequency table viele
+    Vorzüge gegenüber der amiga-table hat. Z.B. hört sich das Vibrato bei
+    hohen Tönen genauso an wie bei tiefen ( bei amiga-table ist das Vibrato
+    bei hohen Tönen viel stärker, während du die tiefen Vibratos gar nicht
+    hörst. Liegt daran daß die Periods der hohen Töne näher aneinander sind
+    als die der tiefen Töne. )
+
+    Ups, bis jetzt habe ich den Effect <Tone Porta+VSlide> nicht unterstützt,
+    weil ich zwischen 4 Fällen ( PortaUp+VUp,PortaUp+VDown,PortaDown+VUp,PortaDown+VDown )
+    unterscheiden mußte. Jetzt funzt es OHNE 4x neuen Code! ;)
+
+    So jetzt geht's ans Vibrato. Ist gar nicht sooo schwer. BTW: Ich weiß
+    jetzt, wieso in TMII das Vibrato nicht gescheit gefunzt hat: Ich habe
+    für die Period-Changes nicht immer die selbe Period ( = normale Tonhöhe )
+    genommen, sondern die vorher veränderte Tonhöhe wieder verändert:
+    statt
+          ****
+        **    **
+       *--------*--------*
+                 **    **
+                   ****
+    kriegt man dann nämlich sowas:
+
+             *******
+          ***       ***
+        **             **
+       *-----------------*
+
+    Hoffentlich versteht man das einigermaßen, ich kann's nicht besser
+    erklären...
+
+    HEHE, Vibrato funzt endlich!!! Was habe ich mich damit bei TMII gequält,
+    ( ohne gescheite docs geht's halt nicht ;)
+    ich hab's an einem Nachmittag geschafft.
+
+    Hmm, das Retrigging war falsch. Es ist in FMODDOC falsch beschrieben!
+    Man muß auch bei Tick 0 retriggen.
+
+░▒▓▓ TM3 - Bug ▓▓▒░────────────────────────────────────────────────────────── 085
+
+ Yep, das war ein Bug ;)
+ Ich habe nie IRQ 10 benutzt, weil er offiziell gar nicht in der SB-IRQ-Liste
+ steht!
+ Also habe ich IRQ 10, der ja vom 2.Interrupt-Controller gehandlet wird, im
+ TM3-IRQ-Handler nicht mehr berücksichtigt ( aber der Detection-Interrupt
+ hat ihn ordnungsgemäß unterstützt ).
+ Es fehlte ein EndOfInterrupt-Command im TM3-IRQ-Handler: Port[$A0]:=20h.
+ BTW: Es ist verdammt hart, in einer älteren TM3-Version Änderungen
+      vorzunehmen, weil die neue teilweise ganz andere Datenstrukturen hat,
+      aber leider noch voller Bugs ist...
+
+░▒▓▓ TM3 goes GUS ▓▓▒░─────────────────────────────────────────────────────── 095
+
+ Ich habe mich ein bißchen mit den GUS-Registern und der Funktionsweise
+ auseinandergesetzt. Im Vergleich zu der SB ist das Mixen ein Kinderspiel.
+ Aber ich werde versuchen, GUS und SB-Mixroutinen möglichst in einer
+ Routine unterzubringen. Das wird ein paar größere Umstrukturierungen mit
+ sich bringen, aber es müßte ziemlich schnell fertig sein.
+
+ Da ich keine GUS habe ( und in nächster Zeit auch nicht haben werde )
+ werde ich etwas GANZ NEUES versuchen. Distance-Programming :)
+ D.h. ich code etwas, du probierst es aus.
+ In ASM ist sowas natürlich reiner Unsinn, aber in C müßte ich es schaffen.
+ Ich werde dir genau erklären, was ich gemacht habe, sodaß du ein paar
+ Bugs auch selbst ausbessern kannst.
+
+ Übrigens: Sobald ich Watcom C habe, wird TM3 kräftig erneuert. Sämtliche
+ Mixer/IRQ-Functions bleiben ASM, aber die Laderoutinen werden ( modular
+ of coz ) in C umgeschrieben. Ich werde direkten MOD, S3M, XM - Support
+ einbauen, den man aber für 64k-Intros entfernen kann ( TM3-Support bleibt
+ ASM! ).
+ Aber dazu muß ich mich erst ein wenig in C einarbeiten.
+ Vorraussetzung dafür ist natürlich, daß reine ASM-Demos nichts anderes
+ als TM3 laden. Aber da ich kaum glaube daß wir außer 64K-Intros noch etwas
+ in reinem Assembler machen, ist das zu verkraften. :)
+
+░▒▓▓ GUS ▓▓▒░──────────────────────────────────────────────────────────────── 096
+
+ Thanx, die DOC werde ich durch den LED-Drucker von meinem Lehrer jagen! :)
+ Hmm, ich glaube, es ist besser, ich lege mir auch eine PNP zu. Right ?
+ Okay, ich werde jetzt erst gescheit C lernen und dann die GUS kaufen 
+ (hoffentlich ist sie dann schon billiger. )
+
+░▒▓▓ AP ▓▓▒░───────────────────────────────────────────────────────────────── 102
+
+ Ich habe es mir nochmal genau überlegt. Wir sollten uns von C nicht ganz
+ hinreißen lassen, es geht nichts über ASM. Der Player bleibt ASM, ich werde,
+ sobald ich meine GUS habe, die entsprechenden Routinen in ASM schreiben
+ ( Kleinigkeit im Vergleich zu SB )
+ Noch was: ich habe mir überlegt, daß ja Pascal auch einen GUS-Player gemacht
+ hat. Ich werde versuchen, einen eigenen "Treiber" für die GUS zu machen.
+ Das hat mehrere Gründe:
+ 1. Wir wollen ja vielleicht auch mal ein 64K-Intro machen, und da ist SB-
+    Unterstützung nur im Weg.
+ 2. Außer den Effekten hat GUS mit SB nichts zu tun. Es dürfte schwierig sein,
+    einen SCHNELLEN Player zu coden, der kompakt beide Soundkarten verwaltet.
+ 3. Wieso gibt es für IT die ganzen Treiber ?
+ Ich glaube, daß gescheiteste wäre, beide Treiber in der DATA-Datei zu
+ speichern und dann nach Bedarf zu laden.
+
+░▒▓▓ AP ▓▓▒░───────────────────────────────────────────────────────────────── 103
+
+ Na endlich, es geht wieder vorwärts. Ich habe herausgefunden, daß im BSS-
+ Segment ( Uninitialised Data ) keine Alignments erlaubt sind. Habe aber
+ keine Ahnung, wieso... ?!?
+ Hä? Jetzt generiert er keinen IRQ mehr ? Oh, ich kriege bald eine Wut auf
+ watcom c!!!!!!
+
+░▒▓▓ AP ▓▓▒░───────────────────────────────────────────────────────────────── 104
+
+ Ich muß sagen, PMODE/W verhält sich total anders als PMODE! Ich habe endlich
+ den Interrupt hingekriegt, alle Variablen haben den richtigen Wert, und
+ trotzdem kommt nur Schrott aus dem Lautsprecher...
+ BTW: Das Mapping geht nur dann, wenn du die PHYSIKALISCHE Adresse einer
+      Speicherstelle hast, und ich habe eine LINEARE Adresse einer
+      Speicherstelle, brauche aber die PHYSIKALISCHE Adresse für den DMA.
+      Kleines Problemchen...
+
+ He? Ich knoble jetzt schon einige Stunden, und immer noch nichts. Langsam
+ reichts mir aber!!!!
+ ALLES FUNZT. Es kommt trotzdem nur Schrott aus dem Speaker.
+ Ups. Es funzt doch nicht alles. Ich habe gerade bemerkt, daß ich keine
+ Pointer printfen kann ?!?!
+
+░▒▓▓ AP ▓▓▒░───────────────────────────────────────────────────────────────── 105
+
+ Na endlich, es geht wieder vorwärts. Ich habe herausgefunden, daß im BSS-
+ Segment ( Uninitialised Data ) keine Alignments erlaubt sind. Habe aber
+ keine Ahnung, wieso... ?!?
+ Hä? Jetzt generiert er keinen IRQ mehr ? Oh, ich kriege bald eine Wut auf
+ watcom c!!!!!!
+ Tja, ich glaube ich werde länger an AP debuggen müssen, als ich ursprünglich
+ vorgehabt habe... :(
+
+░▒▓▓ GUS ▓▓▒░──────────────────────────────────────────────────────────────── 106
+
+ Ich glaube, mit meiner GUS wird es nichts mehr:
+------------------------------------------------------------------------------
+    Advanced Gravis Announced Today That It
+    Has Discontinued Its Sound Card Business
+    Advanced Gravis regrets to announce that it has
+    discontinued its sound card business. All hardware and
+    software product development and manufacturing for the sound
+    card business has been halted, and Gravis has no additional
+    product available.
+    Software currently available through the internet will
+    remain available for download. Due to licensing issues, the
+    GF1 base software for the Ultrasound Classic, MAX and ACE is
+    only available for purchase by calling 1-800-865-2283.
+    Callers outside the U.S. or Canada should dial
+    1-360-866-7026.
+    Gravis will continue to provide technical support on the
+    sound card business, as follows:
+    ...
+    Other Continents: Contact Gravis Europe. The E-mail
+    address isGravis_Europe@compuserve.com;
+    telephone number in Europe is 31-343-563232.
+    European customers can also contact Gravis technical
+    support at the following Green Line phone numbers:
+    ....
+           Germany 0130-810654
+    We at Gravis thank the dedicated supporters of our sound
+    card business for your enthusiasm and loyalty, and apologize
+    for any inconveniences caused by this business decision.
+------------------------------------------------------------------------------
+
+  D¨E¨R   T¨A¨G   A¨N   D¨E¨M   D¨I¨E   G¨U¨S   S¨T¨A¨R¨B    :(
+
+Tja, R.I.P GUS. Ich weiß nicht, ob ich noch die GUS unterstützen sollte...
+Erstens werde ich wahrscheinlich keine mehr kriegen, zweitens ist es ziemlich
+sinnlose Arbeit. Andererseits, fast die ganze Szene hat GUSes. Vielleicht
+sind wir das der Szene schuldig ?
+
+Ehrlich gesagt habe ich schon irgendwie geahnt, daß es nicht mehr lange
+dauern wird. Wie kann sich eine Firma leisten, daß man erst nach Hamburg
+schreiben muß, um eine GUS im Versand zu bekommen ? Absolut keine Publicity.
+
+Daraus kann man aber noch etwas lernen:
+Was nützt ein Produkt, möge es noch so revolutionär oder von superior quality
+sein, wenn das Vermarkten nicht funzt ? Die Wirtschaftswelt ist härtester
+Kapitalismus, wer zu Marketingmäßig zu schwach ist, dem ist die Pleite schon
+vorprogrammiert... Möchte wissen, wie sich John Smith jetzt fühlt...
+Hoffentlich gilt wenigstens folgender Spruch: "Totgesagte leben länger..."
+
+░▒▓▓ AP ▓▓▒░─────────────────────────────────────────────────────────────────
+
+ DOS4GW ist NICHT kompatibel zu PMODEW!!! Ich bin draufgekommen, nachdem ich
+ wieder mal 2 Ewigkeiten debuggt habe, weil auf einmal keine Interrupts
+ ausgelöst wurden! Und ich habe NUR aus Versehen System PmodeW auf System
+ Dos4g umgestellt. Die Folge: Dos4GW handlet die Interrupts ganz anders, es
+ wird nicht automatisch der PMODE-Handler eines IRQs aufgerufen, wenn ein
+ Interrupt im Realmode auftaucht und man keinen Realmode-Handler definiert
+ hat. Den muß man erst einschalten. Fazit: Willst du sound, benutze PMODEW
+ oder schreibe auf DOS4GW um. Ich werde letzteres sicher nicht tun. Ich habe
+ auch so genug zu tun.
+
+ Yeah! Er gibt seine ersten Muckser von sich !!!!!! Aber die 64k-Segmentierung
+ des DMA-Kontrollers funzt nicht. Means: Irgendwas stimmt nicht mit der
+ Absoluten Addressierung. Werden wir gleich haben. Oder doch nicht... :(
+
+ Uuuuups. Das Code-Segment ist eines der Problematischsten Sachen in C!!!
+ Ich habe die DMA-Controller-Ports etc. im Codesegment gehabt und mit BX
+ addressiert statt EBX. bei PMODE hat es ohne Probleme gefunzt, in C geht
+ gar nix!
+ In PMODE durfte man auch ins Code-Segment schreiben ( Code-Manipulationen )
+ in PMODE/W gibt es einen hübschen Page-Fault! :)
+ Die Codemanipulationen müssen etwas komplizierter gelöst werden. Wenn es
+ dich interessiert, schau dir MixStereo in AP_MIX.ASM an.
+ So, mal sehn. ES FUNZT!!!!! Ich höre mir gerade Skaven's <not for kids> an,
+ und es klappt! AHHHH, was ist das ? Er ist gerade abgestürzt, und ich habe
+ die den Verstärker total aufgedreht gehabt. Gott sei dank sind die Boxen
+ heil, aber das hat sich angehört wie ein startender Düsenjet. Ich bin jetzt
+ noch ganz taub... :(
+ Oh, ich habe noch eine Code-Manipulation im Vibrato vergessen. ( BTW: Ich
+ habe gerade entdeckt, daß das Vibrato keineswegs immer gefunzt hätte, auch
+ bei TM3 nicht...
+ So... hmm jetzt höre ich gar kein Vibrato ? Ups, ich habe Fine Vibrato mit
+ Vibrato verwechselt :) Okay, es funzt jetzt.
+
+ Next step: Make it PMODE-usable... :)
+ Hmm, ich glaube kaum, daß ich das vor dem Connect noch schaffe. Auf jeden
+ Fall funzt AP_C. Das andere ist nur eine Frage der Zeit ( hoffe ich. )
+ Heh, sag' ich doch. Okay, die INC-Version funzt auch ( TM3s können aber noch
+ nicht geinct werden, sie werden immer als externe .TM3s geladen )
+ output gibt es auch nicht. Aber es funzt.
+
+░▒▓▓ AP ▓▓▒░───────────────────────────────────────────────────────────────── 108
+
+ Du kannst ja statt <DetectSB> <CheckSBSettings> aufrufen, dann mußt du aber
+ vorher die entsprechenden Werte für <ADR>, <IRQ>, <DMA> setzen.
+ Löschen will ich den Autodetect-Code nicht, ich werde es als Option ins
+ Menü aufnehmen...
+
+ hmm, die Umgebungsvariablen auszulesen ist nicht so einfach... Ich habe hier
+ den Code von MXM vor mir, werde aber nicht schlau draus. Irgendwie scheint
+ Pascal einfach einen ganzen Speicherbereich nach "ULTRASND" zu durchsuchen...
+ Naja, mal sehn...
+
+ Hmm, es gibt noch ein paar Probs. Die Pitches stimmen nicht bei jedem Lied!
+ Und das Vibrato hört sich auch etwas schwach an...
+ Mal debuggen....
+ BTW: Findest du, daß Interpolation notwendig ist ? Ich glaube nicht. Auf
+      dem Comporechner läuft es sowieso auf ner GUS, und bei der SBPro
+      schaltet man halt 44000 Hz ein.
+
+ Yeah! Es funzt das Note Delay!!!
+ Und die Tonhöhe bleibt bei verschiedenen Samplingraten auch ~gleich!
