@@ -1,0 +1,10 @@
+
+ Start  Stop   Length Name               Class
+
+ 00000H 00E7EH 00E7FH CODE16             
+ 00E80H 07CF3H 06E74H CODE32             
+ 07D00H 098FFH 01C00H CODEEND            STACK
+
+Error: Undefined symbol _MAIN in module PMODE.ASM
+Program entry point at 0000:03DB
+

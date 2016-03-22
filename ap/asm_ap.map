@@ -1,0 +1,10 @@
+Error: SBINT_ defined in module ASM_AP.ASM is duplicated in module AP_ASM.ASM
+
+ Start  Stop   Length Name               Class
+
+ 00000H 00E7EH 00E7FH CODE16             
+ 00E80H 0E793H 0D914H CODE32             
+ 0E7A0H 1039FH 01C00H CODEEND            STACK
+
+Program entry point at 0000:03DB
+

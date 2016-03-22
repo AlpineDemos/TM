@@ -1,0 +1,71 @@
+ÚÄÄÄÄÄÄÂÄÄÄÄÄÂÄÄÄÄÄÂÄÄÄÄÄÂÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+³  TM3 ³ S3M ³ IT  ³ MOD ³ XM  ³ Description...                              ³
+ÚÄÄÄÄÄÄÂÄÄÄÄÄÂÄÄÄÄÄÂÄÄÄÄÄÂÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+³û 01h ³  A  ³  A  ³  F  ³  F  ³ Set Speed                                   ³
+³û 02h ³  B  ³  B  ³  B  ³  B  ³ Pattern Jump                                ³
+³û 03h ³  C  ³  C  ³  D  ³  D  ³ Pattern Break                               ³
+³  --- ³ --- ³ --- ³ --- ³ --- ³                                             ³
+³û 04h ³  D  ³  D  ³  A  ³  A  ³ VSlide                                      ³
+³û 05h ³  E  ³  E  ³  2  ³  2  ³ Pitch Slide Down                            ³
+³û 06h ³  F  ³  F  ³  1  ³  1  ³ Pitch Slide Up                              ³
+³  --- ³ --- ³ --- ³ --- ³ --- ³                                             ³
+³û 07h ³  G  ³  G  ³  3  ³  3  ³ Portamento to note ( *4! )                  ³
+³û 08h ³  H  ³  H  ³  4  ³  4  ³ Vibrato ( *4! )                             ³
+³û 09h ³  U  ³  U  ³  ş  ³  ş  ³ Fine Vibrato                                ³
+³  0Ah ³  I  ³  I  ³  ş  ³  T  ³ Tremor                                      ³
+³  0Bh ³  J  ³  J  ³  0  ³  0  ³ Arpeggio                                    ³
+³  --- ³ --- ³ --- ³ --- ³ --- ³                                             ³
+³û 0Ch ³  K  ³  K  ³  6  ³  6  ³ Vibrato+Volume Slide Down                   ³
+³û 0Dh ³  L  ³  L  ³  5  ³  5  ³ Portamento to Note + VSlide Down            ³
+³  --- ³ --- ³ --- ³ --- ³ --- ³                                             ³
+³û 0Eh ³  O  ³  O  ³  9  ³  9  ³ Set Offset Low ( Includes SAx! )            ³
+³  --- ³ --- ³ --- ³ --- ³ --- ³                                             ³
+³? 0Fh ³  Q  ³  Q  ³  E9 ³E9/R ³ Retrig Note / Modify volume                 ³
+³  10h ³  R  ³  R  ³  7  ³  7  ³ Tremolo                                     ³
+³  11h ³  SE ³ SE  ³  EE ³ EE  ³ Pattern Delay for x Notes                   ³
+³û 12h ³ SB0 ³ SB0 ³ E60 ³ E60 ³ Set Loop Start                              ³
+³û 13h ³ SBx ³ SBx ³ E6x ³ E6x ³ Loop x times to LoopStart                   ³
+³  14h ³ SC  ³ SC  ³ EC  ³ EC  ³ Note Cut after X ticks                      ³
+³! 15h ³ SD  ³ SD  ³ ED  ³ ED  ³ Note Delay for X ticks                      ³
+³û 16h ³  T  ³ Txx ³  F  ³  F  ³ Set BPM-Rate                                ³
+³û 17h ³  V  ³  V  ³  ş  ³  G  ³ Set Global Volume                           ³
+³  18h ³  S8 ³S8x/X³8/E8 ³  8  ³ Set Panning Position !                      ³
+³  19h ³  S1 ³  ş  ³  E3 ³ E3  ³ Set Glissando Control                       ³
+³  1Ah ³  S2 ³  ş  ³  E5 ³ E5  ³ Set Finetune                                ³
+³  1Bh ³  S3 ³ S3  ³  E4 ³ E4  ³ Set Vibrato Waveform                        ³
+³  1Ch ³  S4 ³ S4  ³  E6 ³ E6  ³ Set Tremolo Waveform                        ³
+³  1Dh ³  ş  ³ P0x ³  ş  ³ P0x ³ Panning Slide Right                         ³
+³  1Eh ³  ş  ³ Px0 ³  ş  ³ Px0 ³ Panning Slide Left                          ³
+³  1Fh ³  ş  ³ PFx ³  ş  ³  ş  ³ Fine Panning Slide Right                    ³
+³  20h ³  ş  ³ PxF ³  ş  ³  ş  ³ Fine Panning Slide Left                     ³
+³  21h ³  S6 ³  ş  ³  ş  ³  ş  ³ Pattern Delay for x Ticks                   ³
+³  --- ³ --- ³ --- ³ --- ³ --- ³                                             ³
+³  22h ³  ş  ³ W0x ³  ş  ³ H0x ³ Global Volume Slide Down                    ³
+³  23h ³  ş  ³ Wx0 ³  ş  ³ Hx0 ³ Global Volume Slide Up                      ³
+³  24h ³  ş  ³ WFx ³  ş  ³  ş  ³ Global Volume Fine Slide Down               ³
+³  25h ³  ş  ³ WxF ³  ş  ³  ş  ³ Global Volume Fine Slide Up                 ³
+³  26h ³  ş  ³  Y  ³  ş  ³  ş  ³ Panbrello                                   ³
+³  --- ³ --- ³ --- ³ --- ³ --- ³                                             ³
+³  27h ³  ş  ³  M  ³  ş  ³  ş  ³ Set Channel Volume                          ³
+³  --- ³ --- ³ --- ³ --- ³ --- ³                                             ³
+³  28h ³  ş  ³ N0x ³  ş  ³  ş  ³ Channel VSlide Down                         ³
+³  29h ³  ş  ³ Nx0 ³  ş  ³  ş  ³ Channel VSlide Up                           ³
+³  2Ah ³  ş  ³ NFx ³  ş  ³  ş  ³ Channel Fine VSlide Down                    ³
+³  2Bh ³  ş  ³ NxF ³  ş  ³  ş  ³ Channel Fine VSlide Up                      ³
+³  2Ch ³  ş  ³ S70 ³  ş  ³  ş  ³ Past Note Cut                               ³
+³  2Dh ³  ş  ³ S71 ³  ş  ³  ş  ³ Past Note Off                               ³
+³  2Eh ³  ş  ³ S72 ³  ş  ³  ş  ³ Past Note Fade                              ³
+³  2Fh ³  ş  ³ S73 ³  ş  ³  ş  ³ Set NNA to Note Cut                         ³
+³  30h ³  ş  ³ S74 ³  ş  ³  ş  ³ Set NNA to Continue                         ³
+³  31h ³  ş  ³ S75 ³  ş  ³  ş  ³ Set NNA to Note Off                         ³
+³  32h ³  ş  ³ S76 ³  ş  ³  ş  ³ Set NNA to Note Fade                        ³
+³  33h ³  ş  ³ S77 ³  ş  ³  ş  ³ Volume Envelope Off                         ³
+³  34h ³  ş  ³ S78 ³  ş  ³  ş  ³ Volume Envelope On                          ³
+³  35h ³  ş  ³ SAx ³  ş  ³  ş  ³ Set Offset High ( No Effect! )              ³
+³  36h ³  ş  ³ S5  ³  ş  ³  ş  ³ Set Panbrello Waveform                      ³
+³  37h ³  ?  ³ S91 ³  ş  ³  ş  ³ Set Surround Sound...                       ³
+³  38h ³  ş  ³ T0x ³  ş  ³  ş  ³ BPM-Slide down                              ³
+³  39h ³  ş  ³ T1x ³  ş  ³  ş  ³ BPM-Slide up                                ³
+ÀÄÄÄÄÄÄÁÄÄÄÄÄÁÄÄÄÄÄÁÄÄÄÄÄÁÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+

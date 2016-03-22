@@ -1,0 +1,102 @@
+
+                                    TúHúE
+      ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+      ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÜ ÜÛÛÛÛÛÛÛÛÛÜÛÛÛÛÛÛÛÛÛÜ ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÜ
+                    ÛÛÛÛÛÛÛ ÛÛÛÛÛÛÛ   Û   ÛÛÛÛÛÛÛ               ÛÛÛÛÛÛÛ
+                    ÛÛÛÛÛÛÛ ÛÛÛÛÛÛÛ   Û   ÛÛÛÛÛÛÛ        ÛÛÛÛÛÛÛÛÛÛÛÛÛÝ
+                    ÛÛÛÛÛÛÛ ÛÛÛÛÛÛÛ       ÛÛÛÛÛÛÛ               ÛÛÛÛÛÛÛ
+                    ÛÛÛÛÛÛÛ ÛÛÛÛÛÛÛ       ÛÛÛÛÛÛÛ ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛß
+
+      ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ[ FúIúLúE - FúOúRúMúAúT ]ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+
+
+                                     1997
+                                      by
+                                 Syr / ALPiNE
+
+
+       Bytes      Function:
+     ÄÄÄÄÄÄÄÙ  ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+         2      Masterspace
+         1      Global Volume...
+         1      Initial Speed
+         1      Initial BPM
+         1      ChannelNum
+         1      Songlength
+        SLEN    Orders
+         1      Num of Patterns
+         1      Num of Samples
+        CHNL    Panning Values
+
+         4      Sample-Length
+         4      Sample-Loopstart
+         4      C2SPD
+
+        SMPNUM  Volumes
+
+         2      Length of Pattern 0
+         ?      Pattern 0
+
+         ?      Samples
+
+
+      Pattern-Structure:
+     ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+        -------0-  --------1-   -------2-   -------3-   -------4-
+       [þþþþ þþþþ] [þþþþ þþþþ] [þþþþ þþþþ] [þþþþ þþþþ] [þþþþ þþþþ]
+        Sample-No  ÀÄIndexÄÄÄÙ   FX-Num      FX-Byte   Volume-Col
+
+
+      rewritten in TM3:
+
+
+       [þþþþ þþþþ] [þþþþ þþþþ] [þþþþ þþþþ] [þþþþ þþþþ] [þþþþ þþþþ]
+          FX-Byte     FX-Num    ÀÄIndexÄÙ   Sample-No   Volume-Col
+            4           3           2           1           0
+
+
+      Index is a Value between 0 (C-0) and 108h (B-7)
+
+
+
+
+
+   Registers in MIX-Stereo:
+
+     EAX -> Sample / Scaled Sample
+     BL     Volume Left
+     BH     Volume Right
+     SI/ESI Index to Buffer / Index to CSample
+     EDI    Sample-Counter Integer
+            ( So Samples larger than 65536 Bytes ARE possible ;)
+     DX     Sample-Counter fractional
+     EBP    Inc-Factor Integer       ( Same here ;)
+     CX     Inc-Factor fractional
+     ECX    Upper word = BytesPerTick-Counter
+
+     Immediates ( CodeManipulations ) are:
+      - Offset of current Sample
+      - Length of Sample.
+
+   Quite a clear, optimized code, eh ? ;)
+
+
+
+
+
+   IF ANY ERROR OCCURES:
+
+   - SS <> DS ?
+   - ES <> DS ?
+
+
+
+
+
+
+
+
+
+
